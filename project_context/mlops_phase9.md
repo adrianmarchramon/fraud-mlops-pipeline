@@ -2,8 +2,8 @@
 
 > This is the final phase, and although you will write very little code, it is the one that determines whether all your work from the previous eight phases gets noticed or goes unseen. Remember the principle we have repeated since the fundamentals: most people, and especially recruiters, will judge your project by the README and the video **before** looking at the code, and many will never clone the repository. You have built a living, technically sound Machine Learning system; now you need a showcase to display it. This phase puts the system online to make it real and accessible, and packages it (README, video, diagram, post) so anyone can understand what you have achieved in two minutes and be impressed. It is the difference between having a great project and having a great project that people actually see.
 
-**Phase Objective:** Put the system online and package it to impress.  
-**Duration:** ~2 weeks (weeks 11–12 of the project).  
+**Phase Objective:** Put the system online and package it to impress.
+**Duration:** ~2 weeks (weeks 11–12 of the project).
 **By the end, you will have:** The system deployed and publicly accessible, an excellent README, a demo video, a clean architecture diagram, and a post telling the story of the project. In short, a finished project ready to impress.
 
 ---

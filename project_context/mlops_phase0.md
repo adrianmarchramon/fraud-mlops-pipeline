@@ -2,8 +2,8 @@
 
 > This is the first week of the project and the only one in which you will not work directly with Machine Learning. Its purpose is to build the foundation: setting up the environment, structuring the repository properly, getting the quality tools running, and above all, deeply understanding the data to make the design decisions that will shape everything else. It is tempting to skip this phase to "get to the interesting part," but rushing this setup is a common cause of projects turning into chaos halfway through. The foundation is not visible in the final picture, but it supports the entire building.
 
-**Phase objective:** To have the environment and the problem thoroughly defined before writing any ML code.  
-**Duration:** ~1 week (10-15 hours).  
+**Phase objective:** To have the environment and the problem thoroughly defined before writing any ML code.
+**Duration:** ~1 week (10-15 hours).
 **When finished, you will have:** A repository that anyone can clone and install cleanly, with the complete structure, active quality tools, the dataset downloaded and explored, and a decision document justifying the approach.
 
 ---

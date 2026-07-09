@@ -2,8 +2,8 @@
 
 > This is the phase where the project makes the definitive leap from "student" to "professional." Until now, you ran tests manually, checked formatting when you remembered, and built the image whenever you needed it. **CI/CD** automates all of that: it defines processes that automatically run quality checks on every change you push, and if everything passes, build and deploy your application. CI/CD applied to Machine Learning is exactly what companies want to see and rarely find in junior profiles; it is probably the most significant piece when it comes to making an impression, because it demonstrates that you understand that the work doesn't end when the code works on your machine, but when it is delivered in a reliable and repeatable manner.
 
-**Phase objective:** Automate testing, building, and deployment on every change.  
-**Duration:** ~1 week (week 7 of the project).  
+**Phase objective:** Automate testing, building, and deployment on every change.
+**Duration:** ~1 week (week 7 of the project).
 **Upon completion, you will have:** A CI/CD pipeline with GitHub Actions that protects the main branch (no change that breaks tests or formatting can enter), a gate that prevents deploying a model that does not meet minimum quality standards, and the automatic building and publishing of your Docker image on every approved change.
 
 ---

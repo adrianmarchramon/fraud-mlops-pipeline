@@ -2,8 +2,8 @@
 
 > Portfolio project designed to demonstrate that you understand a Machine Learning model is not just a notebook, but a **complete production system**. This is the type of project most lacking in junior profiles and the one companies seek the most.
 
-**Estimated duration:** 10–12 weeks (part-time, ~10-15h/week)  
-**Level:** Intermediate-Advanced  
+**Estimated duration:** 10–12 weeks (part-time, ~10-15h/week)
+**Level:** Intermediate-Advanced
 **Final result:** A system that ingests data, trains versioned models, deploys them as an API, monitors them in production, and automatically retrains when degradation is detected.
 
 ---
@@ -163,7 +163,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Download the dataset and perform an initial exploration in a notebook (distributions, nulls, class balance).
 - [ ] Document decisions: which business metric matters to you? For fraud, likely **high recall** (you don't want to miss fraud) while controlling the false positive rate.
 
-**Deliverable:** Structured repository + exploration notebook + README with architecture.  
+**Deliverable:** Structured repository + exploration notebook + README with architecture.
 **Definition of Done:** A clean `git clone` + installation works, and the README clearly explains what you are going to build.
 
 ---
@@ -181,7 +181,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Run `dvc repro` and verify that it reconstructs the entire data pipeline.
 - [ ] Version `params.yaml` with the preprocessing parameters.
 
-**Deliverable:** Executable DVC pipeline going from raw data to ready features, completely versioned.  
+**Deliverable:** Executable DVC pipeline going from raw data to ready features, completely versioned.
 **Definition of Done:** `dvc repro` reconstructs the processed dataset and `dvc.lock` captures the hashes. If you change `params.yaml`, DVC detects what to re-run.
 
 > **Key concept demonstrated here:** data reproducibility. Anyone can regenerate your exact dataset starting from raw data.
@@ -202,7 +202,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Run several experiments changing hyperparameters and compare them in the MLflow UI.
 - [ ] Write `src/models/evaluate.py` with rigorous evaluation: cross-validation, and analysis of the optimal threshold according to your business metric.
 
-**Deliverable:** Multiple comparable experiments in MLflow, with the best model identified.  
+**Deliverable:** Multiple comparable experiments in MLflow, with the best model identified.
 **Definition of Done:** You open the MLflow UI and see a history of comparable experiments side-by-side, complete with metrics and artifacts.
 
 > **Key concept:** traceability. You know exactly which data + which code + which parameters produced each model and its outcome.
@@ -219,7 +219,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Package the model with its preprocessing (scikit-learn pipeline or custom inference function) so that the API can receive raw data and return predictions without manual steps.
 - [ ] Version the decision threshold alongside the model (it is part of the artifact).
 
-**Deliverable:** A registered and versioned model, retrievable by name/version/stage.  
+**Deliverable:** A registered and versioned model, retrievable by name/version/stage.
 **Definition of Done:** You can load the "Production model" with a single line of code, without needing to know the specific version number.
 
 ---
@@ -239,7 +239,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Write API tests using `pytest` + `TestClient`.
 - [ ] Leverage FastAPI's automatic documentation (`/docs` with Swagger).
 
-**Deliverable:** A functional, documented, and tested API serving predictions.  
+**Deliverable:** A functional, documented, and tested API serving predictions.
 **Definition of Done:** You spin up the API, go to `/docs`, send a test transaction, and receive a prediction with its probability.
 
 ---
@@ -254,7 +254,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Verify that the image is reasonably small (use `.dockerignore`).
 - [ ] Test the entire cycle inside containers.
 
-**Deliverable:** `docker-compose up` spins up the entire system.  
+**Deliverable:** `docker-compose up` spins up the entire system.
 **Definition of Done:** Someone without Python installed can run your project using only Docker.
 
 ---
@@ -269,7 +269,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] `cd.yml`: on push to `main`, build the Docker image and publish it (e.g., to GitHub Container Registry) and/or deploy it to the cloud.
 - [ ] Add badges to the README (build passing, coverage).
 
-**Deliverable:** A green CI/CD pipeline that protects the main branch and deploys automatically.  
+**Deliverable:** A green CI/CD pipeline that protects the main branch and deploys automatically.
 **Definition of Done:** You push code, see the checks running on GitHub, and if everything passes, it deploys automatically.
 
 > **Key concept:** This is what separates a student project from a professional one. CI/CD for ML is exactly what companies want to see.
@@ -286,7 +286,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Write a scheduled (e.g., daily) `pipelines/monitoring_pipeline.py` that evaluates drift on recent data.
 - [ ] Configure the training pipeline to be triggered manually or by an event (e.g., when drift is detected).
 
-**Deliverable:** Orchestrated workflows visible in the Prefect/ZenML dashboard.  
+**Deliverable:** Orchestrated workflows visible in the Prefect/ZenML dashboard.
 **Definition of Done:** You trigger the training pipeline with a single command and watch each stage execute, with automatic retries if anything fails.
 
 ---
@@ -305,7 +305,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Close the loop: connect the drift alert to trigger the retraining pipeline (Phase 7).
 - [ ] Simulate drift by injecting modified data to **demonstrate** that your system detects it (this is excellent for the demo).
 
-**Deliverable:** Monitoring dashboard + alerts + closed retraining loop.  
+**Deliverable:** Monitoring dashboard + alerts + closed retraining loop.
 **Definition of Done:** You inject drifted data, the system detects it, the alert fires, and retraining is triggered. **Showing this on video will stand out significantly to recruiters.**
 
 ---
@@ -322,7 +322,7 @@ Each phase has an **objective**, **concrete tasks**, a **deliverable**, and a **
 - [ ] Write a LinkedIn post explaining what you built, what you learned, and the decisions you made (not just "I made a project," but the *reasoning* behind it).
 - [ ] Create a clean architecture diagram (using Excalidraw or draw.io) for the README.
 
-**Deliverable:** Online system + excellent README + video + post.  
+**Deliverable:** Online system + excellent README + video + post.
 **Definition of Done:** A recruiter can understand the entire project in 2 minutes by reading the README and watching the video, without having to clone anything.
 
 ---

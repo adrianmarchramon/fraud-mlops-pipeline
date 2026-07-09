@@ -2,8 +2,8 @@
 
 > **This is the crown jewel of the project.** Everything built up to this point (versioned data, registered models, API, containers, CI/CD, orchestration) supports a system that works today. But a Machine Learning model has a characteristic that distinguishes it from traditional software: **it degrades over time, silently**. Reality changes, the learned patterns lose their validity, and nothing crashes or throws an error; its predictions simply get worse without anyone noticing. This phase builds the system that detects this degradation and, by connecting it to the retraining loop you wired up in Phase 7, closes the entire loop: your model stops being a static artifact and becomes a **self-maintaining organism**. This is the piece that, when shown in a video, leaves anyone amazed, because it is exactly what courses almost never cover and companies struggle with the most.
 
-**Phase objective:** Detect when the model degrades in production.  
-**Duration:** ~2 weeks (weeks 9-10 of the project).  
+**Phase objective:** Detect when the model degrades in production.
+**Duration:** ~2 weeks (weeks 9-10 of the project).
 **By the end, you will have:** A system that detects drift by comparing current reality with training data, interactive visual reports, threshold-based alerts, a closed retraining loop, and a demonstration where you inject drift and watch the system react on its own.
 
 ---

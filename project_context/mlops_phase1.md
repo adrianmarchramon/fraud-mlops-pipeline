@@ -2,8 +2,8 @@
 
 > This is the phase where the project moves beyond scaffolding and begins to take shape. The goal is to build the path from raw data to training-ready features, doing so in a highly specific way: **versioned, validated, and reproducible**. Recall the principle from the fundamentals: bad data is the number one cause of failures in production, and those failures are silent. This entire phase exists to tame that source of problems: so that you always know what data you are working with, so that data that does not meet expectations fails loudly before contaminating anything, and so that anyone can regenerate your exact features from the source.
 
-**Phase objective:** convert raw data into features in a reproducible and versioned manner.  
-**Duration:** ~2 weeks (weeks 2–3 of the project).  
+**Phase objective:** convert raw data into features in a reproducible and versioned manner.
+**Duration:** ~2 weeks (weeks 2–3 of the project).
 **Upon completion, you will have:** a declaratively defined data pipeline that goes from raw CSV to training and testing sets ready for use, with the data versioned by DVC, a validation layer acting as a quality contract, and a preprocessing pipeline that prevents data leakage and is saved to be reused in production.
 
 ---

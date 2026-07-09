@@ -2,8 +2,8 @@
 
 > This phase marks an important shift in mindset. Up until now, you have *experimented* with models; from here on, you begin to *manage them as production artifacts*. A model heading to production is not a loose file you save in a folder: it is a versioned entity, retrievable by name, with a lifecycle (proposed, validated, deployed, retired) and a history of which version was active at any given moment. In this phase, you will take the best model you identified in Phase 2, package it along with everything it needs to function, and register it so that anyone can retrieve "the production model" with a single line of code, without knowing or needing to know the specific version.
 
-**Phase objective:** Manage model versions as production artifacts.  
-**Duration:** ~1 week (week 5 of the project).  
+**Phase objective:** Manage model versions as production artifacts.
+**Duration:** ~1 week (week 5 of the project).
 **Upon completion you will have:** Your best model packaged (with its preprocessing and its threshold) and registered in the MLflow Model Registry, versioned, with automatic promotion to production if it outperforms the current model, and retrievable by alias with a single line of code.
 
 ---

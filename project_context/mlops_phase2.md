@@ -2,8 +2,8 @@
 
 > This is the phase where Machine Learning finally comes into play. However, it is best to start with the right mindset, which might feel counterintuitive: the goal of this phase **is not to obtain the absolute best possible model**. The goal is to train models rigorously and, above all, to record every single experiment with enough discipline that you can always answer the question: "what exactly produced this result?". Remember what we discussed in the fundamentals: companies are not impressed by your F1-score, but by your ability to build a reliable system. A mediocre, well-traced model is worth more for this project than an excellent one you trained once without really knowing how. Traceability is the skill being demonstrated here.
 
-**Objective of the phase:** train models while rigorously tracking every experiment.  
-**Duration:** ~2 weeks (weeks 3-4 of the project).  
+**Objective of the phase:** train models while rigorously tracking every experiment.
+**Duration:** ~2 weeks (weeks 3-4 of the project).
 **Upon completion you will have:** several experiments comparable side-by-side in the MLflow UI, each with its parameters, metrics, and artifacts; the best model identified with clear criteria; and a rigorous evaluation that includes cross-validation and the conscious choice of the decision threshold based on your business metric.
 
 ---
@@ -350,7 +350,7 @@ Changing the value of `model` between `logistic_regression` and `xgboost`, or ad
 
 After training several models (logistic regression, XGBoost, perhaps variants with different hyperparameters or thresholds), you open the MLflow UI at `http://localhost:5000`, and this is where the value of rigorous tracking materializes.
 
-In the interface, you will see your `fraud-detection` experiment with all its runs listed. You can select and compare them side-by-side: a table will show parameters and metrics for each in parallel columns, letting you see at a glance which configuration yielded the best PR-AUC, which had the best recall, and which struck the best balance. You can **sort** the runs by any metric to find the best one, and click on any run to see its artifacts: the confusion matrix and the PR curve you saved. 
+In the interface, you will see your `fraud-detection` experiment with all its runs listed. You can select and compare them side-by-side: a table will show parameters and metrics for each in parallel columns, letting you see at a glance which configuration yielded the best PR-AUC, which had the best recall, and which struck the best balance. You can **sort** the runs by any metric to find the best one, and click on any run to see its artifacts: the confusion matrix and the PR curve you saved.
 
 This ability to compare experiments side-by-side, with all their context, is exactly what makes MLflow a traceability tool rather than a simple notepad. And it is, literally, the **success criterion** for this phase: when you open the UI and see a history of comparable experiments with their metrics and artifacts, you have met the objective. Take your time here to identify, with clear criteria, which is your best model, as it will be the one you register and promote in Phase 3.
 
