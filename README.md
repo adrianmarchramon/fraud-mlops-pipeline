@@ -23,10 +23,7 @@ promote, over days/weeks). The closed drift → retrain loop is the centrepiece.
 
 ![Architecture of the closed-loop fraud MLOps system](docs/images/architecture.png)
 
-> 🚧 **Diagram pending.** The polished architecture diagram (to be drawn in
-> [Excalidraw](https://excalidraw.com) / [draw.io](https://draw.io) and saved to
-> `docs/images/architecture.png`) is not yet in place. Until then, the interim text flow below
-> is the source of truth:
+The same flow as a quick textual reference:
 
 ```
  raw data ─▶ ingest + validate (DVC, Pandera) ─▶ preprocess ─▶ train (MLflow) ─▶ Model Registry
