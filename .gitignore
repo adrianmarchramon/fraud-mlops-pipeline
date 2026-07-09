@@ -1,0 +1,28 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# AI / agent local files
+CLAUDE.md
+.claude/
+
+# Data (managed by DVC starting from Phase 1)
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# ML / test / lint artifacts
+.pytest_cache/
+.ruff_cache/
+mlruns/
+
+# Notebooks (checkpoints)
+.ipynb_checkpoints/
