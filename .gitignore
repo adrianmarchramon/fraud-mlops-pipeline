@@ -14,9 +14,9 @@ CLAUDE.md
 .claude/
 
 # Data (managed by DVC starting from Phase 1)
-data/raw/*
+# data/raw/ is governed by DVC's per-folder .gitignore (written by `dvc add`);
+# the broad rule was removed so the versioned creditcard.csv.dvc pointer stays visible to Git.
 data/processed/*
-!data/raw/.gitkeep
 !data/processed/.gitkeep
 
 # ML / test / lint artifacts
