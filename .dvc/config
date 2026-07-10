@@ -1,0 +1,4 @@
+[core]
+    remote = localremote
+['remote "localremote"']
+    url = /home/amr/.dvc-remotes/fraud-mlops-pipeline
