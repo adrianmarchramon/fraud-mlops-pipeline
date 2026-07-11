@@ -1,2 +1,9 @@
 # params.yaml — versioned pipeline hyperparameters and parameters.
 # Populated starting from Phase 1 (Data Pipeline and Versioning).
+
+preprocess:
+  test_size: 0.2
+  random_state: 42
+  scale_columns:
+    - Time
+    - Amount
