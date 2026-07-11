@@ -78,6 +78,7 @@ def validate_raw_data() -> ValidationReport:
     REPORTS_DIR.mkdir(exist_ok=True)
     with open(REPORTS_DIR / "validation.json", "w") as f:
         json.dump(report, f, indent=2)
+        f.write("\n")  # trailing newline keeps end-of-file-fixer happy
 
     logger.info(
         "Validation passed: %d rows, fraud rate %.4f%%",
