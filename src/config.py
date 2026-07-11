@@ -1,13 +1,19 @@
-"""Placeholder module for config.py.
+"""Centralized configuration: filesystem paths and shared constants.
 
-Centralize configuration (environment variables, paths, and shared parameters).
-
-Planned implementation phase: cross-cutting (populated from Phase 2 onward).
-Current status: placeholder without business logic (Phase 0 / Step 4).
-
-Required quality standard when implemented:
-    - Strict typing (mypy --strict as reference; avoid unjustified `Any`).
-    - Structured logging (never `print()`).
-    - Custom application exception hierarchy (never bare `except:`).
-    - Pytest coverage is non-negotiable as soon as testable logic exists.
+Nothing outside this module should hardcode a path; every other module
+imports its paths and constants from here so a change lands in one place.
 """
+
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data"
+REPORTS_DIR = PROJECT_ROOT / "reports"
+
+RAW_DATA = DATA_DIR / "raw" / "creditcard.csv"
+PROCESSED_DIR = DATA_DIR / "processed"
+TRAIN_PATH = PROCESSED_DIR / "train.parquet"
+TEST_PATH = PROCESSED_DIR / "test.parquet"
+PREPROCESSOR_PATH = PROCESSED_DIR / "preprocessor.joblib"
+
+TARGET = "Class"
