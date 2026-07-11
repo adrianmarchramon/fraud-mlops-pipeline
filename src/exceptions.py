@@ -17,3 +17,12 @@ class DataIngestionError(FraudPipelineError):
 
 class DataValidationError(FraudPipelineError):
     """Raised when raw data fails the Pandera quality contract."""
+
+
+class DataPreprocessingError(FraudPipelineError):
+    """Raised when preprocessing config cannot be loaded or the transform fails.
+
+    Covers a missing or malformed params.yaml (including a missing
+    'preprocess' key); data-contract failures keep their own
+    DataValidationError.
+    """
