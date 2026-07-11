@@ -5,9 +5,12 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "joblib>=1.5.3",
     "matplotlib>=3.11.0",
     "pandas>=3.0.3",
     "pandera>=0.32.1",
+    "pyarrow>=25.0.0",
+    "pyyaml>=6.0.3",
     "scikit-learn>=1.9.0",
     "seaborn>=0.13.2",
 ]
@@ -30,7 +33,11 @@ extend-exclude = ["*.ipynb"]  # notebooks are exploration-only, not production c
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "D", "S"]
-ignore = ["D401"]  # module summaries start with "Placeholder ...", not imperative
+ignore = [
+    "D401",  # imperative-mood first line — too strict for our docstring style
+    "N803",  # allow ML argument naming (e.g. X)
+    "N806",  # allow ML local-variable naming (e.g. X_train) — sklearn convention
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
