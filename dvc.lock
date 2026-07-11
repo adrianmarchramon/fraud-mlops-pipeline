@@ -1,0 +1,73 @@
+schema: '2.0'
+stages:
+  validate:
+    cmd: uv run python -m src.data.validate
+    deps:
+    - path: data/raw/creditcard.csv
+      hash: md5
+      md5: e90efcb83d69faf99fcab8b0255024de
+      size: 150828752
+    - path: src/config.py
+      hash: md5
+      md5: 72f66aba3bfef10eb8a70654c3917a35
+      size: 620
+    - path: src/data/ingest.py
+      hash: md5
+      md5: a0b5cd97020bcff659d9a8a1d6aa2ead
+      size: 1353
+    - path: src/data/validate.py
+      hash: md5
+      md5: 01daab66ee01f7ce48fa8000b7ea6c45
+      size: 4686
+    outs:
+    - path: reports/validation.json
+      hash: md5
+      md5: d434d759778563edb0729eb10b66fa5e
+      size: 89
+  preprocess:
+    cmd: uv run python -m src.data.preprocess
+    deps:
+    - path: data/raw/creditcard.csv
+      hash: md5
+      md5: e90efcb83d69faf99fcab8b0255024de
+      size: 150828752
+    - path: reports/validation.json
+      hash: md5
+      md5: d434d759778563edb0729eb10b66fa5e
+      size: 89
+    - path: src/config.py
+      hash: md5
+      md5: 72f66aba3bfef10eb8a70654c3917a35
+      size: 620
+    - path: src/data/ingest.py
+      hash: md5
+      md5: a0b5cd97020bcff659d9a8a1d6aa2ead
+      size: 1353
+    - path: src/data/preprocess.py
+      hash: md5
+      md5: b1bd43a7ac2b3e0dcfd9f13a83765403
+      size: 5133
+    - path: src/data/validate.py
+      hash: md5
+      md5: 01daab66ee01f7ce48fa8000b7ea6c45
+      size: 4686
+    params:
+      params.yaml:
+        preprocess.random_state: 42
+        preprocess.scale_columns:
+        - Time
+        - Amount
+        preprocess.test_size: 0.2
+    outs:
+    - path: data/processed/preprocessor.joblib
+      hash: md5
+      md5: ef05f3b25418c01cf49042c49252227f
+      size: 3016
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: 41f3ae2cc1ebe7c4558ac2aa1c816fc2
+      size: 16829289
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 74bda47b428122094c6ff70d1642b8fb
+      size: 61639016
