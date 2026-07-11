@@ -1,0 +1,29 @@
+stages:
+  validate:
+    cmd: uv run python -m src.data.validate
+    deps:
+      - src/data/validate.py
+      - src/data/ingest.py
+      - src/config.py
+      - data/raw/creditcard.csv
+    outs:
+      - reports/validation.json:
+          cache: false
+
+  preprocess:
+    cmd: uv run python -m src.data.preprocess
+    deps:
+      - src/data/preprocess.py
+      - src/data/ingest.py
+      - src/data/validate.py
+      - src/config.py
+      - data/raw/creditcard.csv
+      - reports/validation.json
+    params:
+      - preprocess.test_size
+      - preprocess.random_state
+      - preprocess.scale_columns
+    outs:
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+      - data/processed/preprocessor.joblib
