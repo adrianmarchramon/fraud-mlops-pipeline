@@ -8,9 +8,10 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phase 0 complete** (foundations). Phases 1–9 are under active
-> construction — see the [roadmap](#roadmap) below. This is a living project, built in gated
-> phases, not an abandoned prototype.
+> **Project status:** 🟢 **Phases 0–1 complete** — foundations plus a versioned, validated,
+> reproducible data pipeline (DVC + Pandera). Phases 2–9 are under active construction — see the
+> [roadmap](#roadmap) below. This is a living project, built in gated phases, not an abandoned
+> prototype.
 
 ---
 
@@ -64,7 +65,7 @@ in the design-decision records: **[`docs/decisions/`](docs/decisions/)**.
 
 Chosen for a reproducible, production-shaped system at portfolio scale — no Kubernetes, no
 over-engineering. The **Phase** column shows when each tool enters the project; "✅ active" means
-it is already wired up as of Phase 0.
+it is already wired up in the repository today (through Phase 1).
 
 | Concern | Tool | Phase |
 |---|---|---|
@@ -74,8 +75,8 @@ it is already wired up as of Phase 0.
 | Git hooks | **pre-commit** (ruff, whitespace, large-file guard) | ✅ active |
 | Testing | **pytest** | ✅ active |
 | Exploration | **pandas · seaborn · matplotlib · Jupyter** | ✅ active |
-| Data versioning | **DVC** (data never committed to Git) | Phase 1 |
-| Data validation | **Pandera** (schema as a quality contract) | Phase 1 |
+| Data versioning | **DVC** (data never committed to Git) | ✅ active |
+| Data validation | **Pandera** (schema as a quality contract) | ✅ active |
 | Modelling | **scikit-learn / XGBoost** + **imbalanced-learn** | Phase 2 |
 | Experiment tracking & Model Registry | **MLflow** | Phases 2–3 |
 | Inference API | **FastAPI** + **Pydantic** | Phase 4 |
@@ -112,17 +113,35 @@ make serve          # run the FastAPI inference API (available from Phase 4)
 
 ### Getting the data
 
-`make setup` prepares the *environment* but does **not** download the dataset (it is not stored
-in Git — DVC will manage it from Phase 1). To reproduce the exploration notebook, fetch the
-[Kaggle Credit Card Fraud dataset](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud)
-with configured Kaggle API credentials:
+`make setup` prepares the *environment* but does **not** fetch the dataset — data is never
+stored in Git. From Phase 1 the data is **DVC-managed**: `data/raw/creditcard.csv` and the
+processed artifacts are tracked by DVC, with only the lightweight `.dvc` / `dvc.lock` pointers
+committed to Git.
+
+If you have access to the configured DVC remote, pull the tracked data — raw CSV, processed
+`train`/`test` parquet, and the fitted `preprocessor.joblib` — in one step:
+
+```bash
+uv run dvc pull
+```
+
+> **Note:** the default DVC remote is currently a **local** store on the author's machine — a
+> deliberate Phase 1 choice (see
+> [`docs/decisions/0005-dvc-local-remote.md`](docs/decisions/0005-dvc-local-remote.md)). A clone
+> on a different machine therefore cannot `dvc pull` until a shared/cloud remote is configured.
+
+To reproduce the pipeline from scratch on any machine, fetch the raw CSV from
+[Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (with configured Kaggle API
+credentials) and rebuild the versioned pipeline:
 
 ```bash
 uv run kaggle datasets download -d mlg-ulb/creditcardfraud -p data/raw --unzip
+uv run dvc repro
 ```
 
-This places `creditcard.csv` in `data/raw/`, after which `notebooks/01_exploration.ipynb` runs
-end to end.
+This places `creditcard.csv` in `data/raw/`, runs the versioned pipeline (validate → preprocess),
+and regenerates `data/processed/{train,test}.parquet` and `preprocessor.joblib`. The exploration
+notebook `notebooks/01_exploration.ipynb` also runs end to end once the raw CSV is present.
 
 ---
 
@@ -134,7 +153,7 @@ passes before the next begins.
 | Phase | Milestone | Status |
 |---|---|---|
 | 0 | Repo, environment, data understanding & decision log | ✅ Complete |
-| 1 | Versioned data pipeline (DVC + Pandera) | ⏳ Planned |
+| 1 | Versioned data pipeline (DVC + Pandera) | ✅ Complete |
 | 2 | Training + experiment tracking (MLflow) | ⏳ Planned |
 | 3 | Model Registry & packaging | ⏳ Planned |
 | 4 | Inference API (FastAPI) | ⏳ Planned |
