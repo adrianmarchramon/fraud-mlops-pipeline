@@ -26,3 +26,11 @@ class DataPreprocessingError(FraudPipelineError):
     'preprocess' key); data-contract failures keep their own
     DataValidationError.
     """
+
+
+class ModelTrainingError(FraudPipelineError):
+    """Raised when loading training data or training the model fails.
+
+    Covers a missing or unreadable processed split and the absence of the
+    target column; downstream training/evaluation failures reuse it too.
+    """
