@@ -17,3 +17,10 @@ TEST_PATH = PROCESSED_DIR / "test.parquet"
 PREPROCESSOR_PATH = PROCESSED_DIR / "preprocessor.joblib"
 
 TARGET = "Class"
+
+# MLflow experiment tracking. A SQLite backend is used from the start (instead of
+# flat mlruns/ storage) because it is required by the Model Registry in Phase 3;
+# choosing it now avoids migrating the backend later.
+MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
+EXPERIMENT_NAME = "fraud-detection"
+MODELS_DIR = PROJECT_ROOT / "models"

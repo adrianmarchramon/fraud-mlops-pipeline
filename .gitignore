@@ -23,6 +23,7 @@ data/processed/*
 .pytest_cache/
 .ruff_cache/
 mlruns/
+mlflow.db
 
 # Notebooks (checkpoints)
 .ipynb_checkpoints/
