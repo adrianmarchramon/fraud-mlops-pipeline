@@ -8,15 +8,28 @@ preprocess:
     - Time
     - Amount
 
-# Minimal, provisional train block (Phase 2, Step 6). Only what
-# logistic_regression needs today; Step 7 adds the xgboost sub-section and
-# Step 8 formalizes the full block. `resampling` is mutually exclusive with
-# class weighting per run: "smote" oversamples and disables class_weight,
-# "none" keeps class_weight="balanced". `threshold` is a provisional fixed
-# value — its principled optimization is Step 10's job.
+# Versioned training parameters (Phase 2, Step 8). Shared keys apply to every
+# run; each model owns a hyperparameter sub-block, so switching `train.model`
+# never requires rewriting the rest. resolve_model_params() in
+# src/models/train.py flattens the active model's sub-block onto the shared keys
+# before build_model() sees them.
+#
+# `model` stays logistic_regression until Step 9 chooses between the two on
+# explicit criteria. `threshold` is provisional (Step 10 optimizes it).
+# `resampling` is mutually exclusive with class weighting per run and is a
+# SHARED key: it is honored for logistic_regression (smote disables
+# class_weight). xgboost's imbalance knob is scale_pos_weight, so it expects
+# resampling=none — pairing xgboost with smote would double-correct, a latent
+# case to resolve in Step 9 when the active model is chosen.
 train:
   model: logistic_regression
   threshold: 0.5
   resampling: smote
-  max_iter: 1000
   random_state: 42
+  logistic_regression:
+    max_iter: 1000
+  xgboost:
+    n_estimators: 300
+    max_depth: 5
+    learning_rate: 0.1
+    scale_pos_weight: 577.29

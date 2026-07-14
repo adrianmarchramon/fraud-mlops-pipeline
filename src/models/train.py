@@ -6,8 +6,9 @@ load_split() (feature loader), build_model() (classifier factory for
 logistic_regression and xgboost), build_training_pipeline() (optional,
 mutually-exclusive SMOTE resampling), compute_metrics() (the fraud metrics),
 the MLflow-pure artifact writers save_confusion_matrix() / save_pr_curve(),
-load_params(), and the train() entrypoint that logs a full run to MLflow.
-evaluate.py's threshold optimization (Step 10) is still to come.
+load_params() / resolve_model_params() (per-model hyperparameter resolution),
+and the train() entrypoint that logs a full run to MLflow. evaluate.py's
+threshold optimization (Step 10) is still to come.
 
 Quality standard (as for every production module here):
     - Strict typing (mypy --strict as reference; avoid unjustified `Any`).
@@ -297,6 +298,44 @@ def load_params() -> dict[str, Any]:
         raise ModelTrainingError("params.yaml has no top-level 'train' key") from exc
 
 
+def resolve_model_params(train_params: dict[str, Any]) -> dict[str, Any]:
+    """Flatten the active model's hyperparameters into a single flat dict.
+
+    params.yaml versions the hyperparameters of every supported model
+    simultaneously, so switching train.model never requires rewriting the rest
+    of the file. build_model() and build_training_pipeline() stay unaware of
+    this: they only ever see a flat dictionary scoped to whichever model is
+    active. This function is the single place that resolves that translation.
+
+    Args:
+        train_params: the raw "train" block as loaded from params.yaml, with
+            shared keys (model, threshold, resampling, random_state) plus one
+            nested sub-block per supported model.
+
+    Returns:
+        A flat dictionary merging the shared keys with the hyperparameters of
+        train_params["model"].
+
+    Raises:
+        ModelTrainingError: if a required shared key is missing, or the active
+            model has no matching sub-block.
+    """
+    try:
+        active_model = train_params["model"]
+        model_params = train_params[active_model]
+        shared = {
+            "model": active_model,
+            "threshold": train_params["threshold"],
+            "resampling": train_params["resampling"],
+            "random_state": train_params["random_state"],
+        }
+    except KeyError as exc:
+        raise ModelTrainingError(f"Malformed train params: missing key {exc}") from exc
+
+    logger.info("Resolved train params for active model: %s", active_model)
+    return {**shared, **model_params}
+
+
 def save_confusion_matrix(
     y_true: pd.Series, y_pred: npt.NDArray[np.int_], output_dir: Path
 ) -> Path:
@@ -377,7 +416,7 @@ def train() -> None:
             inside the try block, so a failing run is marked FAILED in
             MLflow before the exception is translated to the caller.
     """
-    params = load_params()
+    params = resolve_model_params(load_params())
     logger.info(
         "Starting training run: model=%s, resampling=%s, threshold=%s",
         params["model"],
