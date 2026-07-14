@@ -2,12 +2,12 @@
 
 Planned implementation phase: Phase 2 — Training and Experiment Tracking.
 Current status: end-to-end training with MLflow tracking. Provides
-load_split() (feature loader), build_model() (classifier factory),
-build_training_pipeline() (optional, mutually-exclusive SMOTE resampling),
-compute_metrics() (the fraud metrics), the MLflow-pure artifact writers
-save_confusion_matrix() / save_pr_curve(), load_params(), and the train()
-entrypoint that logs a full run to MLflow. The "xgboost" branch (Step 7) and
-evaluate.py's threshold optimization (Step 10) are still to come.
+load_split() (feature loader), build_model() (classifier factory for
+logistic_regression and xgboost), build_training_pipeline() (optional,
+mutually-exclusive SMOTE resampling), compute_metrics() (the fraud metrics),
+the MLflow-pure artifact writers save_confusion_matrix() / save_pr_curve(),
+load_params(), and the train() entrypoint that logs a full run to MLflow.
+evaluate.py's threshold optimization (Step 10) is still to come.
 
 Quality standard (as for every production module here):
     - Strict typing (mypy --strict as reference; avoid unjustified `Any`).
@@ -42,6 +42,7 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
+from xgboost import XGBClassifier
 
 from src.config import (
     EXPERIMENT_NAME,
@@ -110,10 +111,8 @@ def build_model(params: dict[str, Any]) -> ClassifierMixin:
     """Build an unfitted classifier from a parameter dictionary.
 
     Args:
-        params: must contain a "model" key naming the algorithm. Only
-            "logistic_regression" is supported in this interaction; the
-            "xgboost" branch is added in Step 7 without modifying this
-            function's existing branches.
+        params: must contain a "model" key naming the algorithm.
+            Supports "logistic_regression" and "xgboost".
 
     Returns:
         An unfitted, ready-to-fit classifier instance.
@@ -133,6 +132,21 @@ def build_model(params: dict[str, Any]) -> ClassifierMixin:
         except KeyError as exc:
             raise ModelTrainingError(
                 f"Missing required hyperparameter for logistic_regression: {exc}"
+            ) from exc
+
+    if name == "xgboost":
+        try:
+            return XGBClassifier(
+                n_estimators=params["n_estimators"],
+                max_depth=params["max_depth"],
+                learning_rate=params["learning_rate"],
+                scale_pos_weight=params["scale_pos_weight"],
+                random_state=params["random_state"],
+                eval_metric="aucpr",
+            )
+        except KeyError as exc:
+            raise ModelTrainingError(
+                f"Missing required hyperparameter for xgboost: {exc}"
             ) from exc
 
     raise ModelTrainingError(f"Unsupported model: {name!r}")
