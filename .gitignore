@@ -24,6 +24,9 @@ data/processed/*
 .ruff_cache/
 mlruns/
 mlflow.db
+# Local training artifacts (confusion_matrix.png, pr_curve.png). The permanent
+# copy of each run's artifacts lives in MLflow's own store, not here.
+models/
 
 # Notebooks (checkpoints)
 .ipynb_checkpoints/
