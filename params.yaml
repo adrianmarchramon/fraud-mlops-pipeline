@@ -7,3 +7,16 @@ preprocess:
   scale_columns:
     - Time
     - Amount
+
+# Minimal, provisional train block (Phase 2, Step 6). Only what
+# logistic_regression needs today; Step 7 adds the xgboost sub-section and
+# Step 8 formalizes the full block. `resampling` is mutually exclusive with
+# class weighting per run: "smote" oversamples and disables class_weight,
+# "none" keeps class_weight="balanced". `threshold` is a provisional fixed
+# value — its principled optimization is Step 10's job.
+train:
+  model: logistic_regression
+  threshold: 0.5
+  resampling: smote
+  max_iter: 1000
+  random_state: 42
