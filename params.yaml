@@ -14,17 +14,19 @@ preprocess:
 # src/models/train.py flattens the active model's sub-block onto the shared keys
 # before build_model() sees them.
 #
-# `model` stays logistic_regression until Step 9 chooses between the two on
-# explicit criteria. `threshold` is provisional (Step 10 optimizes it).
+# `model` is xgboost as of Step 9, chosen on PR-AUC (0.8760, vs 0.7249 for the
+# best logistic_regression run) — the primary metric fixed in ADR 0001.
+# `threshold` is provisional (Step 10 optimizes it).
 # `resampling` is mutually exclusive with class weighting per run and is a
 # SHARED key: it is honored for logistic_regression (smote disables
-# class_weight). xgboost's imbalance knob is scale_pos_weight, so it expects
-# resampling=none — pairing xgboost with smote would double-correct, a latent
-# case to resolve in Step 9 when the active model is chosen.
+# class_weight). xgboost's imbalance knob is scale_pos_weight instead, and it
+# silently ignores class_weight, so xgboost MUST pair with resampling=none —
+# smote would double-correct (scale_pos_weight AND SMOTE at once). That is why
+# activating xgboost in Step 9 flips resampling to none in the same change.
 train:
-  model: logistic_regression
+  model: xgboost
   threshold: 0.5
-  resampling: smote
+  resampling: none
   random_state: 42
   logistic_regression:
     max_iter: 1000
