@@ -466,6 +466,7 @@ def train() -> None:
             metrics_path.parent.mkdir(parents=True, exist_ok=True)
             with open(metrics_path, "w") as f:
                 json.dump(metrics, f, indent=2)
+                f.write("\n")  # trailing newline keeps end-of-file-fixer happy
 
             run_id = mlflow.active_run().info.run_id
             logger.info("Training completed: run_id=%s, metrics=%s", run_id, metrics)

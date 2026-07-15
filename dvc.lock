@@ -88,8 +88,8 @@ stages:
       size: 955
     - path: src/models/train.py
       hash: md5
-      md5: 5bce999d9b3ddb1a93a2be4e3825d92f
-      size: 17701
+      md5: e595b91cb3992ab31babe648a175273a
+      size: 17781
     params:
       params.yaml:
         train.logistic_regression:
@@ -106,5 +106,5 @@ stages:
     outs:
     - path: reports/metrics.json
       hash: md5
-      md5: b06c8c9ca2443d22f55b4bddef34e060
-      size: 128
+      md5: 0b2e575c800ba28af4d4fa7e39943c89
+      size: 129
