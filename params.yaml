@@ -35,3 +35,19 @@ train:
     max_depth: 5
     learning_rate: 0.1
     scale_pos_weight: 577.29
+
+# Versioned evaluation parameters (Phase 2, Step 10), consumed as arguments by
+# the pure functions in src/models/evaluate.py — which never read this file
+# themselves, exactly as compute_metrics() never reads it.
+#
+# cost_fp / cost_fn come from ADR 0002 (docs/decisions/0002-cost-asymmetry.md),
+# which fixes a false negative at ~EUR 137 (EUR 122 mean fraud amount + ~EUR 15
+# handling) and a false positive at EUR 3-5; 4.0 is that range's midpoint,
+# giving an FN:FP ratio of ~34:1, inside the ~25-50:1 band that ADR records.
+# These are ILLUSTRATIVE figures, explicitly not measured business data, so any
+# threshold derived from them inherits that caveat — ADR 0002 requires them to
+# live here as parameters rather than hardcoded in the code.
+evaluate:
+  cv_folds: 5
+  cost_fp: 4.0
+  cost_fn: 137.0
