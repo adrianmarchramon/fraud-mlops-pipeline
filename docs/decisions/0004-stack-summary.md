@@ -47,7 +47,11 @@ vars so the same code runs locally and in containers.
 
 ## Trade-offs / consequences
 
-- Python **3.14** is pinned (`.python-version`); the stack resolved cleanly on it, but it is
-  new enough that some third-party tools may lag. (Note: `pyproject.toml` still declares
-  `requires-python = ">=3.12"` — a known minor inconsistency flagged for a later phase.)
+- Python **3.12** is pinned (`.python-version`), consistent with `pyproject.toml`'s
+  `requires-python = ">=3.12"`. This record originally pinned **3.14** and noted that a very
+  new interpreter risks third-party tools lagging behind it. That risk materialised in Phase 2
+  (commit `54e22b9`): MLflow's UI server imports `importlib.abc.Traversable`, removed in 3.14,
+  so `mlflow ui` would not start. Python was repinned 3.14 → 3.12, and the same MLflow
+  constraint caps `pandas>=2.2,<3` and `pyarrow>=18,<25`. Updated 2026-07-15 during the Phase 2
+  closure, when the stale claim was caught.
 - Committing to this stack now keeps later phases focused on wiring, not re-selection.

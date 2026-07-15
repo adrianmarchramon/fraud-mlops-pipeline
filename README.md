@@ -69,7 +69,7 @@ it is already wired up in the repository today (through Phase 1).
 
 | Concern | Tool | Phase |
 |---|---|---|
-| Language | Python 3.14 | ✅ active |
+| Language | Python 3.12 | ✅ active |
 | Environment & dependencies | **uv** (single lockfile, no manual venvs) | ✅ active |
 | Lint **and** format | **ruff** (one tool — no black) | ✅ active |
 | Git hooks | **pre-commit** (ruff, whitespace, large-file guard) | ✅ active |
@@ -91,7 +91,7 @@ it is already wired up in the repository today (through Phase 1).
 ## Getting started
 
 **Prerequisites:** [`uv`](https://docs.astral.sh/uv/) installed. uv manages the Python
-interpreter (pinned to 3.14 in `.python-version`), the virtual environment, and all
+interpreter (pinned to 3.12 in `.python-version`), the virtual environment, and all
 dependencies — you do not need to create or activate a venv yourself.
 
 ```bash
