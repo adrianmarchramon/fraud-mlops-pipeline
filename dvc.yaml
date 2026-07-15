@@ -27,3 +27,34 @@ stages:
       - data/processed/train.parquet
       - data/processed/test.parquet
       - data/processed/preprocessor.joblib
+
+  # Extends the graph from data into the model: dvc repro now rebuilds
+  # raw -> validate -> preprocess -> train, re-running only what changed.
+  #
+  # The two model sub-blocks are declared whole, not as individual leaf keys,
+  # because resolve_model_params() splats the entire active sub-block
+  # ({**shared, **train_params[active_model]}) — the block itself is the real
+  # dependency, and listing it whole also covers hyperparameters added later.
+  #
+  # metrics: (not outs:) for metrics.json — it is small, structured, readable
+  # data meant to live in Git and be compared with `dvc metrics diff`, not a
+  # cached binary. The confusion-matrix and PR-curve PNGs are deliberately NOT
+  # declared: MLflow already versions them per run, and models/ is overwritten
+  # on every run.
+  train:
+    cmd: uv run python -m src.models.train
+    deps:
+      - src/models/train.py
+      - src/config.py
+      - data/processed/train.parquet
+      - data/processed/test.parquet
+    params:
+      - train.model
+      - train.threshold
+      - train.resampling
+      - train.random_state
+      - train.logistic_regression
+      - train.xgboost
+    metrics:
+      - reports/metrics.json:
+          cache: false
