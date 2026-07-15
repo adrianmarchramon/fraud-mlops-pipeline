@@ -16,7 +16,15 @@ preprocess:
 #
 # `model` is xgboost as of Step 9, chosen on PR-AUC (0.8760, vs 0.7249 for the
 # best logistic_regression run) — the primary metric fixed in ADR 0001.
-# `threshold` is provisional (Step 10 optimizes it).
+# `threshold` is the cost-optimal operating point measured in Step 10 via
+# cost_optimal_threshold() with the `evaluate` costs below: it minimizes
+# expected business cost (EUR 1787 on the test split, vs EUR 2240 at the old
+# provisional 0.5 and EUR 2885 at the F1-optimal 0.9921). It sits far below 0.5
+# because a missed fraud costs ~34x a false alarm, so catching fraud is worth
+# many false alarms. It inherits ADR 0002's "illustrative figures" caveat and
+# must be re-derived when real cost data exists. Per ADR 0001 it is a versioned
+# part of the model artifact, not an API detail — Phase 3 registers it with the
+# model.
 # `resampling` is mutually exclusive with class weighting per run and is a
 # SHARED key: it is honored for logistic_regression (smote disables
 # class_weight). xgboost's imbalance knob is scale_pos_weight instead, and it
@@ -25,7 +33,7 @@ preprocess:
 # activating xgboost in Step 9 flips resampling to none in the same change.
 train:
   model: xgboost
-  threshold: 0.5
+  threshold: 0.03
   resampling: none
   random_state: 42
   logistic_regression:
