@@ -8,10 +8,12 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–1 complete** — foundations plus a versioned, validated,
-> reproducible data pipeline (DVC + Pandera). Phases 2–9 are under active construction — see the
-> [roadmap](#roadmap) below. This is a living project, built in gated phases, not an abandoned
-> prototype.
+> **Project status:** 🟢 **Phases 0–2 complete** — foundations, a versioned and validated data
+> pipeline (DVC + Pandera), and tracked training on top of it: every experiment is logged to
+> MLflow with its parameters, metrics and artifacts, and `dvc repro` now rebuilds the pipeline
+> all the way from raw data to a trained model. Phases 3–9 are under active construction — see
+> the [roadmap](#roadmap) below. This is a living project, built in gated phases, not an
+> abandoned prototype.
 
 ---
 
@@ -65,7 +67,7 @@ in the design-decision records: **[`docs/decisions/`](docs/decisions/)**.
 
 Chosen for a reproducible, production-shaped system at portfolio scale — no Kubernetes, no
 over-engineering. The **Phase** column shows when each tool enters the project; "✅ active" means
-it is already wired up in the repository today (through Phase 1).
+it is already wired up in the repository today (through Phase 2).
 
 | Concern | Tool | Phase |
 |---|---|---|
@@ -77,8 +79,9 @@ it is already wired up in the repository today (through Phase 1).
 | Exploration | **pandas · seaborn · matplotlib · Jupyter** | ✅ active |
 | Data versioning | **DVC** (data never committed to Git) | ✅ active |
 | Data validation | **Pandera** (schema as a quality contract) | ✅ active |
-| Modelling | **scikit-learn / XGBoost** + **imbalanced-learn** | Phase 2 |
-| Experiment tracking & Model Registry | **MLflow** | Phases 2–3 |
+| Modelling | **scikit-learn / XGBoost** + **imbalanced-learn** | ✅ active |
+| Experiment tracking | **MLflow** (SQLite backend) | ✅ active |
+| Model Registry | **MLflow Model Registry** | Phase 3 |
 | Inference API | **FastAPI** + **Pydantic** | Phase 4 |
 | Containerization | **Docker** + Docker Compose | Phase 5 |
 | CI/CD | **GitHub Actions** (incl. a model-validation gate) | Phase 6 |
@@ -107,9 +110,24 @@ installs the git hooks. The rest of the interface is the Makefile:
 make lint           # ruff check
 make format         # ruff format
 make test           # pytest
-make train          # train the model             (available from Phase 2)
+make train          # train the model, logging the run to MLflow
 make serve          # run the FastAPI inference API (available from Phase 4)
 ```
+
+### Inspecting the experiments
+
+Every training run — its parameters, metrics, confusion matrix and PR curve — is tracked in
+MLflow, backed by a local SQLite store. To browse the run history and compare experiments side
+by side:
+
+```bash
+uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
+```
+
+Runs are best sorted by **PR-AUC**, the primary metric fixed in
+[`docs/decisions/0001-business-metric.md`](docs/decisions/0001-business-metric.md). The tracking
+store is local and git-ignored, so a fresh clone starts with an empty history until you run
+`make train` or `uv run dvc repro`.
 
 ### Getting the data
 
@@ -139,9 +157,13 @@ uv run kaggle datasets download -d mlg-ulb/creditcardfraud -p data/raw --unzip
 uv run dvc repro
 ```
 
-This places `creditcard.csv` in `data/raw/`, runs the versioned pipeline (validate → preprocess),
-and regenerates `data/processed/{train,test}.parquet` and `preprocessor.joblib`. The exploration
-notebook `notebooks/01_exploration.ipynb` also runs end to end once the raw CSV is present.
+This places `creditcard.csv` in `data/raw/`, runs the versioned pipeline
+(validate → preprocess → train), regenerates `data/processed/{train,test}.parquet` and
+`preprocessor.joblib`, trains the model, and writes `reports/metrics.json`. Since Phase 2 the
+pipeline reaches all the way to the model: `dvc repro` re-runs only the stages whose
+dependencies actually changed, so editing a hyperparameter in `params.yaml` retrains the model
+without recomputing the data. The exploration notebook `notebooks/01_exploration.ipynb` also
+runs end to end once the raw CSV is present.
 
 ---
 
@@ -154,7 +176,7 @@ passes before the next begins.
 |---|---|---|
 | 0 | Repo, environment, data understanding & decision log | ✅ Complete |
 | 1 | Versioned data pipeline (DVC + Pandera) | ✅ Complete |
-| 2 | Training + experiment tracking (MLflow) | ⏳ Planned |
+| 2 | Training + experiment tracking (MLflow) | ✅ Complete |
 | 3 | Model Registry & packaging | ⏳ Planned |
 | 4 | Inference API (FastAPI) | ⏳ Planned |
 | 5 | Containerization (Docker) | ⏳ Planned |
