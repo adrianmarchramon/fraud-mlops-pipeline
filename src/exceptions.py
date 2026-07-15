@@ -32,5 +32,15 @@ class ModelTrainingError(FraudPipelineError):
     """Raised when loading training data or training the model fails.
 
     Covers a missing or unreadable processed split and the absence of the
-    target column; downstream training/evaluation failures reuse it too.
+    target column.
+    """
+
+
+class ModelEvaluationError(FraudPipelineError):
+    """Raised when model evaluation (cross-validation, threshold search) fails.
+
+    Kept distinct from ModelTrainingError because evaluating a model and
+    training one are different responsibilities, in different modules — the
+    same criterion that separates DataValidationError from
+    DataPreprocessingError.
     """
