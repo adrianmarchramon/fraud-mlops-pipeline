@@ -9,8 +9,8 @@ stages:
       size: 150828752
     - path: src/config.py
       hash: md5
-      md5: c02501621b6314afc1a2249699d0577c
-      size: 955
+      md5: d06609d3f5df43887a80cb2e5fa19d16
+      size: 1208
     - path: src/data/ingest.py
       hash: md5
       md5: a0b5cd97020bcff659d9a8a1d6aa2ead
@@ -37,8 +37,8 @@ stages:
       size: 89
     - path: src/config.py
       hash: md5
-      md5: c02501621b6314afc1a2249699d0577c
-      size: 955
+      md5: d06609d3f5df43887a80cb2e5fa19d16
+      size: 1208
     - path: src/data/ingest.py
       hash: md5
       md5: a0b5cd97020bcff659d9a8a1d6aa2ead
@@ -84,8 +84,8 @@ stages:
       size: 61639016
     - path: src/config.py
       hash: md5
-      md5: c02501621b6314afc1a2249699d0577c
-      size: 955
+      md5: d06609d3f5df43887a80cb2e5fa19d16
+      size: 1208
     - path: src/models/train.py
       hash: md5
       md5: e595b91cb3992ab31babe648a175273a
