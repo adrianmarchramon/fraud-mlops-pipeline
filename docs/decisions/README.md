@@ -8,7 +8,9 @@ Justification → Trade-offs / consequences**. Every quantitative claim is trace
 source — for records 0001–0010, most often a cell in
 [`notebooks/01_exploration.ipynb`](../../notebooks/01_exploration.ipynb) (Phase 0, Step 8),
 executed against `data/raw/creditcard.csv`; for 0011–0014, a tracked run in the MLflow
-`fraud-detection` experiment, identified by run id and re-derivable from it.
+`fraud-detection` experiment, identified by run id and re-derivable from it; for
+0015–0018, the registered versions of `fraud-detector` and the commands that produced
+them, quoted in each record.
 
 | # | Decision | Status |
 |---|----------|--------|
@@ -26,9 +28,14 @@ executed against `data/raw/creditcard.csv`; for 0011–0014, a tracked run in th
 | [0012](0012-imbalance-strategy.md) | Class-imbalance strategy: two levels, exclusive within the first | Accepted |
 | [0013](0013-winning-model-xgboost.md) | Winning model: XGBoost over the logistic-regression baseline | Accepted |
 | [0014](0014-cost-optimal-threshold.md) | Operating threshold: cost-optimal (0.03), not F1-optimal | Accepted (inherits 0002's illustrative caveat) |
+| [0015](0015-packaged-model-contract.md) | Packaged model contract: artifacts injection, raw in, probability + decision out | Accepted |
+| [0016](0016-promotion-quality-gate.md) | Promotion quality gate: PR-AUC alone, `@production` alone, strictly better | Accepted (inherits 0002's illustrative caveat) |
+| [0017](0017-registry-testing-and-visibility.md) | Testing the Registry with hand-written doubles; evidencing it through the API | Accepted |
+| [0018](0018-registry-snapshot-phase-3.md) | Registry state at Phase 3 closure (dated snapshot) | Accepted (point-in-time) |
 
 Records **0001–0004** were established in Phase 0 (foundations); **0005–0010** in Phase 1
-(data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking).
+(data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking);
+**0015–0018** in Phase 3 (model registry and packaging).
 
 > These records feed the "Design decisions" section of the README (Phase 0, Step 10 — out
 > of scope here). They are the articulable rationale behind the system, kept in writing so
