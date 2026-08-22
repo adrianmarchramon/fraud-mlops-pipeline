@@ -8,12 +8,13 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–2 complete** — foundations, a versioned and validated data
-> pipeline (DVC + Pandera), and tracked training on top of it: every experiment is logged to
-> MLflow with its parameters, metrics and artifacts, and `dvc repro` now rebuilds the pipeline
-> all the way from raw data to a trained model. Phases 3–9 are under active construction — see
-> the [roadmap](#roadmap) below. This is a living project, built in gated phases, not an
-> abandoned prototype.
+> **Project status:** 🟢 **Phases 0–3 complete** — foundations, a versioned and validated data
+> pipeline (DVC + Pandera), tracked training on top of it, and models managed as production
+> artifacts rather than loose experiments: the winning model is packaged with its preprocessor
+> and decision threshold, registered and versioned in the MLflow Model Registry, and promoted
+> to `@production` only when it beats the model already there. Phases 4–9 are under active
+> construction — see the [roadmap](#roadmap) below. This is a living project, built in gated
+> phases, not an abandoned prototype.
 
 ---
 
@@ -67,7 +68,7 @@ in the design-decision records: **[`docs/decisions/`](docs/decisions/)**.
 
 Chosen for a reproducible, production-shaped system at portfolio scale — no Kubernetes, no
 over-engineering. The **Phase** column shows when each tool enters the project; "✅ active" means
-it is already wired up in the repository today (through Phase 2).
+it is already wired up in the repository today (through Phase 3).
 
 | Concern | Tool | Phase |
 |---|---|---|
@@ -81,7 +82,7 @@ it is already wired up in the repository today (through Phase 2).
 | Data validation | **Pandera** (schema as a quality contract) | ✅ active |
 | Modelling | **scikit-learn / XGBoost** + **imbalanced-learn** | ✅ active |
 | Experiment tracking | **MLflow** (SQLite backend) | ✅ active |
-| Model Registry | **MLflow Model Registry** | Phase 3 |
+| Model Registry | **MLflow Model Registry** (versions + aliases) | ✅ active |
 | Inference API | **FastAPI** + **Pydantic** | Phase 4 |
 | Containerization | **Docker** + Docker Compose | Phase 5 |
 | CI/CD | **GitHub Actions** (incl. a model-validation gate) | Phase 6 |
@@ -111,6 +112,7 @@ make lint           # ruff check
 make format         # ruff format
 make test           # pytest
 make train          # train the model, logging the run to MLflow
+make register       # register the best run, promote it if it beats production
 make serve          # run the FastAPI inference API (available from Phase 4)
 ```
 
@@ -128,6 +130,28 @@ Runs are best sorted by **PR-AUC**, the primary metric fixed in
 [`docs/decisions/0001-business-metric.md`](docs/decisions/0001-business-metric.md). The tracking
 store is local and git-ignored, so a fresh clone starts with an empty history until you run
 `make train` or `uv run dvc repro`.
+
+### Using the production model
+
+`make register` takes the best run in the experiment, packages it with the fitted preprocessor
+and the versioned decision threshold into a single artifact that accepts **raw** transactions,
+registers it as a new version of `fraud-detector`, and moves the `@production` alias to it —
+but only if its PR-AUC beats the version already holding that alias. An inferior model is
+registered and left unpromoted rather than silently shipped.
+
+Consumers never name a version. They ask for the role:
+
+```python
+from src.models.register import load_production_model
+
+model = load_production_model()          # models:/fraud-detector@production
+predictions = model.predict(raw_transactions)   # fraud_probability + is_fraud
+```
+
+Because preprocessing and the threshold travel inside the artifact, the caller feeds raw
+transactions straight in — no reimplemented feature engineering, and therefore no
+*training-serving skew*. Promoting a new version changes what that call returns without
+changing a line of the code that makes it, which is what the Phase 4 API relies on.
 
 ### Getting the data
 
@@ -177,7 +201,7 @@ passes before the next begins.
 | 0 | Repo, environment, data understanding & decision log | ✅ Complete |
 | 1 | Versioned data pipeline (DVC + Pandera) | ✅ Complete |
 | 2 | Training + experiment tracking (MLflow) | ✅ Complete |
-| 3 | Model Registry & packaging | ⏳ Planned |
+| 3 | Model Registry & packaging | ✅ Complete |
 | 4 | Inference API (FastAPI) | ⏳ Planned |
 | 5 | Containerization (Docker) | ⏳ Planned |
 | 6 | CI/CD (GitHub Actions) | ⏳ Planned |
