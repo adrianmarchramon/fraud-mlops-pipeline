@@ -1,4 +1,4 @@
-.PHONY: setup lint format test train serve clean
+.PHONY: setup lint format test train register serve clean
 
 setup:        ## Install dependencies and configure pre-commit
 	uv sync
@@ -15,6 +15,9 @@ test:         ## Run tests
 
 train:        ## Train model (available starting from Phase 2)
 	uv run python -m src.models.train
+
+register:     ## Register best run in the Model Registry, promote if better (Phase 3)
+	uv run python -m src.models.register
 
 serve:        ## Start API (available starting from Phase 4)
 	uv run uvicorn src.api.main:app --reload
