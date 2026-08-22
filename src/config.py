@@ -23,4 +23,8 @@ TARGET = "Class"
 # choosing it now avoids migrating the backend later.
 MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
 EXPERIMENT_NAME = "fraud-detection"
+# The Model Registry entry, deliberately distinct from EXPERIMENT_NAME: an
+# experiment groups training runs, a registered model groups packaged versions.
+# They are two different MLflow entities and must not share a name.
+MODEL_NAME = "fraud-detector"
 MODELS_DIR = PROJECT_ROOT / "models"
