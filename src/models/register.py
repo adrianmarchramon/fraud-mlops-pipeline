@@ -1,9 +1,10 @@
 """Model packaging for the MLflow Model Registry.
 
 Planned implementation phase: Phase 3 — Model Registry and Packaging.
-Current status: packaging, registration and promotion implemented (Phase 3,
-Steps 2-5). Provides FraudModel, the mlflow.pyfunc artifact that turns a RAW
-transaction into a thresholded fraud decision by carrying the Phase 1
+Current status: packaging, registration, promotion and production loading all
+implemented (Phase 3, Steps 2-8). Provides FraudModel, the mlflow.pyfunc
+artifact that turns a RAW transaction into a thresholded fraud decision by
+carrying the Phase 1
 preprocessor, the winning Phase 2 classifier and the versioned decision
 threshold as one unit; load_threshold(), the scoped params.yaml reader that
 supplies that threshold; find_best_run() / build_packaged_model() /
@@ -13,10 +14,15 @@ promote_if_better(), the quality gate that moves the @production alias only
 when a candidate actually beats the incumbent. main() wires the three together
 as the `make register` workflow.
 
-Unlike Steps 2-3, this module now WRITES to the Model Registry: register_model()
-creates versions and promote_if_better() moves an alias. Still to come: the
-formal production-loading deliverable (Step 6), the registry UI walkthrough
-(Step 7), and the packaging/promotion tests (Step 8).
+load_production_model() closes the loop: it resolves the @production alias and
+returns the packaged artifact, so a consumer names a role rather than a version
+number — the phase's success criterion, and the single call Phase 4's API will
+make.
+
+Unlike Steps 2-3, this module WRITES to the Model Registry: register_model()
+creates versions and promote_if_better() moves an alias. Every implementation
+step of Phase 3 (1-8) is now done; only the phase's formal closure — README,
+decision records, Definition of Done checklist and tag — remains.
 
 Quality standard (as for every production module here):
     - Strict typing (mypy --strict as reference; avoid unjustified `Any`).
@@ -41,6 +47,7 @@ from mlflow.entities import Run
 from mlflow.entities.model_registry import ModelVersion
 from mlflow.exceptions import MlflowException
 from mlflow.models import infer_signature
+from mlflow.pyfunc import PyFuncModel
 from mlflow.pyfunc.model import PythonModel, PythonModelContext
 from mlflow.tracking import MlflowClient
 
@@ -702,6 +709,54 @@ def promote_if_better(version: ModelVersion, model_name: str = MODEL_NAME) -> bo
         reason,
     )
     return True
+
+
+def load_production_model(model_name: str = MODEL_NAME) -> PyFuncModel:
+    """Load the model version that currently holds the @production alias.
+
+    This is the single line the whole phase exists to make possible, and its
+    success criterion: the caller names a ROLE, not a version number, so
+    promoting a new version changes what this returns without changing a
+    character of the consuming code. Phase 4's API calls this instead of
+    re-deriving the models:/ URI in another module.
+
+    Thin by design — resolve the alias, delegate to mlflow.pyfunc.load_model(),
+    translate failure. It holds no business logic of its own.
+
+    Args:
+        model_name: registered model to load from; defaults to the project's.
+
+    Returns:
+        The packaged artifact, ready to predict on RAW transactions: it applies
+        the Phase 1 preprocessor and the versioned threshold internally.
+
+    Raises:
+        ModelRegistrationError: if no version holds the @production alias, or
+            the underlying MLflow load fails.
+    """
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+    # Resolved first so a missing alias fails with a message that says what is
+    # actually wrong, rather than an MLflow URI-resolution error.
+    try:
+        version = _client().get_model_version_by_alias(model_name, PRODUCTION_ALIAS)
+    except MlflowException as exc:
+        raise ModelRegistrationError(
+            f"No version of {model_name!r} holds the @{PRODUCTION_ALIAS} alias; "
+            "register and promote a model first"
+        ) from exc
+
+    uri = f"models:/{model_name}@{PRODUCTION_ALIAS}"
+    # Annotated because mlflow.pyfunc.load_model() is untyped and would
+    # otherwise widen this function's return type to Any.
+    model: PyFuncModel
+    try:
+        model = mlflow.pyfunc.load_model(uri)
+    except Exception as exc:
+        raise ModelRegistrationError(f"Could not load {uri}") from exc
+
+    logger.info("Loaded %s, which resolves to version %s", uri, version.version)
+    return model
 
 
 def main() -> None:
