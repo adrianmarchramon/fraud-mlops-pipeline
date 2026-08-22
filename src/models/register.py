@@ -82,6 +82,12 @@ RUN_MODEL_PATH = "model"
 # identical is what lets promote_if_better() compare without recomputing.
 PR_AUC_KEY = "pr_auc"
 
+# The decision threshold's third guarantee. It is already versioned in
+# params.yaml and embedded inside the artifact; tagging it too means the
+# operating point of any version can be read straight off the Registry —
+# by a reviewer, or by a CI gate — without deserializing the model.
+THRESHOLD_KEY = "threshold"
+
 # The single alias this project uses. Champion/challenger A/B testing is a
 # documented stretch goal, not current scope, so no other alias is created.
 PRODUCTION_ALIAS = "production"
@@ -473,9 +479,10 @@ def register_model(run: Run) -> ModelVersion:
 
     Tags the resulting version with the run's own pr_auc — the value measured
     in Phase 2, never a recomputation — so the quality gate can compare cheaply
-    and auditably later. Assigns no alias: promotion is promote_if_better()'s
-    exclusive responsibility, and a registered version that is not in
-    production is a perfectly valid state.
+    and auditably later, and with the decision threshold the artifact carries,
+    completing the threshold's third guarantee. Assigns no alias: promotion is
+    promote_if_better()'s exclusive responsibility, and a registered version
+    that is not in production is a perfectly valid state.
 
     Logging happens in a NEW run, never by reopening the training run: that run
     is history from a closed phase (phase-2-complete) and must not be mutated.
@@ -571,6 +578,12 @@ def register_model(run: Run) -> ModelVersion:
             key=PR_AUC_KEY,
             value=str(pr_auc),
         )
+        client.set_model_version_tag(
+            name=MODEL_NAME,
+            version=str(version_number),
+            key=THRESHOLD_KEY,
+            value=str(model.threshold),
+        )
         version = client.get_model_version(MODEL_NAME, str(version_number))
     except MlflowException as exc:
         raise ModelRegistrationError(
@@ -578,12 +591,14 @@ def register_model(run: Run) -> ModelVersion:
         ) from exc
 
     logger.info(
-        "Registered %r version %s from run %s (%s=%.6f), no alias assigned",
+        "Registered %r version %s from run %s (%s=%.6f, %s=%s), no alias assigned",
         MODEL_NAME,
         version.version,
         run.info.run_id,
         PR_AUC_KEY,
         pr_auc,
+        THRESHOLD_KEY,
+        model.threshold,
     )
     return version
 
