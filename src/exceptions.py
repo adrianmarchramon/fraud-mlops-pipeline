@@ -44,3 +44,14 @@ class ModelEvaluationError(FraudPipelineError):
     same criterion that separates DataValidationError from
     DataPreprocessingError.
     """
+
+
+class ModelRegistrationError(FraudPipelineError):
+    """Raised when packaging, registering, or promoting a model fails.
+
+    Covers the whole src/models/register.py domain — building the packaged
+    inference artifact, reading the versioned decision threshold, and (from
+    Steps 4-5) registering versions and moving the production alias — on the
+    same one-exception-per-module criterion that makes ModelTrainingError
+    cover all of train.py.
+    """
