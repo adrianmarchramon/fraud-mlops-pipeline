@@ -23,6 +23,7 @@ import numpy.typing as npt
 import pandas as pd
 import pytest
 from mlflow.entities.model_registry import ModelVersion, ModelVersionTag
+from mlflow.exceptions import MlflowException
 
 from src.config import MODEL_NAME
 from src.exceptions import (
@@ -35,6 +36,7 @@ from src.models.register import (
     PRODUCTION_ALIAS,
     FraudModel,
     get_production_metric,
+    load_production_model,
     load_threshold,
     promote_if_better,
 )
@@ -341,3 +343,55 @@ def test_promotion_rejects_a_candidate_without_a_metric(fake_client) -> None:
     with pytest.raises(ModelRegistrationError, match="no 'pr_auc' tag"):
         promote_if_better(_version("1", None))
     assert client.alias_calls == []
+
+
+def test_load_production_model_asks_for_the_alias_not_a_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # The whole point of the phase: consumers name a role. If this ever starts
+    # building models:/fraud-detector/<number>, promoting a new version would
+    # silently stop reaching callers.
+    monkeypatch.setattr(
+        "src.models.register._client", lambda: _FakeClient(_version("1", "0.8760"))
+    )
+    seen: list[str] = []
+
+    def _fake_load(uri: str) -> str:
+        seen.append(uri)
+        return "loaded-model"
+
+    monkeypatch.setattr("mlflow.pyfunc.load_model", _fake_load)
+
+    assert load_production_model() == "loaded-model"
+    assert seen == [f"models:/{MODEL_NAME}@{PRODUCTION_ALIAS}"]
+
+
+def test_load_production_model_fails_clearly_when_nothing_is_promoted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A registry with versions but no @production is a real state — the error
+    # must say that, not surface an opaque URI-resolution failure.
+    class _NoAliasClient:
+        def get_model_version_by_alias(self, name: str, alias: str) -> ModelVersion:
+            raise MlflowException("Registered model alias production not found.")
+
+    monkeypatch.setattr("src.models.register._client", lambda: _NoAliasClient())
+    with pytest.raises(ModelRegistrationError, match="holds the @production alias"):
+        load_production_model()
+
+
+def test_load_production_model_translates_a_failing_load(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # A corrupt or unreachable artifact must arrive as this project's own
+    # exception type, like every other failure in the module.
+    monkeypatch.setattr(
+        "src.models.register._client", lambda: _FakeClient(_version("1", "0.8760"))
+    )
+
+    def _boom(uri: str) -> str:
+        raise OSError("artifact store unreachable")
+
+    monkeypatch.setattr("mlflow.pyfunc.load_model", _boom)
+    with pytest.raises(ModelRegistrationError, match="Could not load"):
+        load_production_model()
