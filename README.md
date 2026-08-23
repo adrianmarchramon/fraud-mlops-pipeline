@@ -8,13 +8,14 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–3 complete** — foundations, a versioned and validated data
-> pipeline (DVC + Pandera), tracked training on top of it, and models managed as production
-> artifacts rather than loose experiments: the winning model is packaged with its preprocessor
-> and decision threshold, registered and versioned in the MLflow Model Registry, and promoted
-> to `@production` only when it beats the model already there. Phases 4–9 are under active
-> construction — see the [roadmap](#roadmap) below. This is a living project, built in gated
-> phases, not an abandoned prototype.
+> **Project status:** 🟢 **Phases 0–4 complete** — foundations, a versioned and validated data
+> pipeline (DVC + Pandera), tracked training on top of it, models managed as production
+> artifacts rather than loose experiments (packaged with their preprocessor and decision
+> threshold, registered in the MLflow Model Registry, promoted to `@production` only when they
+> beat the model already there), and **a typed REST API serving that model over HTTP** with
+> self-generated interactive docs. Phases 5–9 are under active construction — see the
+> [roadmap](#roadmap) below. This is a living project, built in gated phases, not an abandoned
+> prototype.
 
 ---
 
@@ -68,7 +69,7 @@ in the design-decision records: **[`docs/decisions/`](docs/decisions/)**.
 
 Chosen for a reproducible, production-shaped system at portfolio scale — no Kubernetes, no
 over-engineering. The **Phase** column shows when each tool enters the project; "✅ active" means
-it is already wired up in the repository today (through Phase 3).
+it is already wired up in the repository today (through Phase 4).
 
 | Concern | Tool | Phase |
 |---|---|---|
@@ -83,7 +84,7 @@ it is already wired up in the repository today (through Phase 3).
 | Modelling | **scikit-learn / XGBoost** + **imbalanced-learn** | ✅ active |
 | Experiment tracking | **MLflow** (SQLite backend) | ✅ active |
 | Model Registry | **MLflow Model Registry** (versions + aliases) | ✅ active |
-| Inference API | **FastAPI** + **Pydantic** | Phase 4 |
+| Inference API | **FastAPI** + **Pydantic** + **Uvicorn** | ✅ active |
 | Containerization | **Docker** + Docker Compose | Phase 5 |
 | CI/CD | **GitHub Actions** (incl. a model-validation gate) | Phase 6 |
 | Orchestration | **Prefect** | Phase 7 |
@@ -113,7 +114,7 @@ make format         # ruff format
 make test           # pytest
 make train          # train the model, logging the run to MLflow
 make register       # register the best run, promote it if it beats production
-make serve          # run the FastAPI inference API (available from Phase 4)
+make serve          # run the FastAPI inference API on http://localhost:8000
 ```
 
 ### Inspecting the experiments
@@ -151,7 +152,53 @@ predictions = model.predict(raw_transactions)   # fraud_probability + is_fraud
 Because preprocessing and the threshold travel inside the artifact, the caller feeds raw
 transactions straight in — no reimplemented feature engineering, and therefore no
 *training-serving skew*. Promoting a new version changes what that call returns without
-changing a line of the code that makes it, which is what the Phase 4 API relies on.
+changing a line of the code that makes it, which is exactly what the inference API relies on.
+
+### Serving the model over HTTP
+
+```bash
+make serve          # uvicorn on http://localhost:8000
+```
+
+The API loads the `@production` model **once at startup** and holds it in memory, so it never
+names a version: promote a new one in the Registry, restart the service, and it serves the new
+model with no code change. Three endpoints:
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /predict` | score one raw transaction |
+| `GET /health` | liveness + whether a model is loaded (used by the container health check) |
+| `GET /model-info` | which registered model, version and alias are being served |
+
+Open **<http://localhost:8000/docs>** and the interactive Swagger UI lets you send a transaction
+and read the prediction straight from the browser — no client code. (A reference-style view
+lives at `/redoc`.) Both are generated from the Pydantic schemas, so the documentation cannot
+drift from what the API actually accepts.
+
+A request carries the 30 raw dataset columns — `Time`, `Amount` and the anonymised PCA
+components `V1`…`V28`, all required:
+
+```bash
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"Time": 0.0, "Amount": 149.62, "V1": -1.359807, "V2": -0.072781, ..., "V28": -0.021053}'
+```
+
+```json
+{"fraud_probability": 0.000042796866182470694, "is_fraud": 0, "model_version": "1"}
+```
+
+Values are illustrative: `model_version` reports whichever version currently holds
+`@production`, so it changes as models are promoted.
+
+The response carries the probability alongside the decision: the label drives the action, the
+probability supports triage and auditing. Anything malformed — a missing field, a negative
+`Amount`, a string where a number belongs — is rejected with a **422** by Pydantic before it
+reaches the model.
+
+Every served prediction is appended to `logs/predictions.jsonl` (input, output and a UTC
+timestamp, one JSON object per line). That file is git-ignored runtime output, and it is the
+raw material Phase 8 consumes to detect drift.
 
 ### Getting the data
 
@@ -202,7 +249,7 @@ passes before the next begins.
 | 1 | Versioned data pipeline (DVC + Pandera) | ✅ Complete |
 | 2 | Training + experiment tracking (MLflow) | ✅ Complete |
 | 3 | Model Registry & packaging | ✅ Complete |
-| 4 | Inference API (FastAPI) | ⏳ Planned |
+| 4 | Inference API (FastAPI) | ✅ Complete |
 | 5 | Containerization (Docker) | ⏳ Planned |
 | 6 | CI/CD (GitHub Actions) | ⏳ Planned |
 | 7 | Orchestration (Prefect) | ⏳ Planned |
