@@ -4,6 +4,7 @@ Nothing outside this module should hardcode a path; every other module
 imports its paths and constants from here so a change lands in one place.
 """
 
+import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -21,7 +22,13 @@ TARGET = "Class"
 # MLflow experiment tracking. A SQLite backend is used from the start (instead of
 # flat mlruns/ storage) because it is required by the Model Registry in Phase 3;
 # choosing it now avoids migrating the backend later.
-MLFLOW_TRACKING_URI = "sqlite:///mlflow.db"
+#
+# Read from the environment so one build behaves correctly everywhere: the
+# default keeps local runs on the SQLite file, while docker-compose injects
+# http://mlflow:5000 to reach the MLflow service. This is the override
+# 0011-mlflow-sqlite-backend.md deferred to Phase 5, and the only reason the
+# same train.py and register.py can populate a containerized registry unchanged.
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db")
 EXPERIMENT_NAME = "fraud-detection"
 # The Model Registry entry, deliberately distinct from EXPERIMENT_NAME: an
 # experiment groups training runs, a registered model groups packaged versions.
