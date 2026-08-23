@@ -1,2 +1,64 @@
-# docker-compose.yml — orchestrates API + MLflow (+ optional logging DB).
-# Populated in Phase 5 (Containerization).
+# Orchestrates the two services the system needs at serving time (Phase 5).
+#
+# Two services, not three: the general roadmap mentions an optional logging
+# database, but predictions are appended to logs/predictions.jsonl, and
+# docs/decisions/0021-prediction-log-and-api-tests.md froze that file's path
+# and record shape as a contract with Phase 8. Swapping it for a database now
+# would break a phase that has not been written yet.
+#
+# Image tags are pinned rather than :latest. mlflow matches the 3.14.0 in
+# uv.lock so the server and the client library in the API agree — a mismatched
+# pair is a real source of registry errors — and a floating tag would sit badly
+# beside a committed lockfile and DVC-versioned data.
+
+services:
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.14.0
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow/mlflow.db
+      --artifacts-destination /mlflow/artifacts
+      --serve-artifacts
+    ports:
+      - "5000:5000"
+    volumes:
+      # Named volume, not a bind mount: containers are disposable, registered
+      # models are not. This survives `docker compose down`.
+      - mlflow-data:/mlflow
+    healthcheck:
+      # Python rather than curl: the official MLflow image is not guaranteed to
+      # ship an HTTP CLI, but it necessarily has an interpreter.
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/health')\" || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  api:
+    build:
+      # The repository root, so uv.lock and pyproject.toml are reachable.
+      # .dockerignore keeps that context small.
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      # Tracked template; copy to docker/.env to override locally.
+      - .env.example
+    depends_on:
+      mlflow:
+        # Not a bare `depends_on: [mlflow]`, which orders starts but not
+        # readiness. The API resolves @production once during lifespan and,
+        # by 0020-api-structure-and-state.md, starts anyway on failure without
+        # ever retrying — so losing this race leaves a container stuck in
+        # no_model until someone restarts it.
+        condition: service_healthy
+
+volumes:
+  mlflow-data:

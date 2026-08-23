@@ -33,3 +33,6 @@ models/
 
 # Notebooks (checkpoints)
 .ipynb_checkpoints/
+
+# Local docker env overrides; docker/.env.example is the tracked template.
+docker/.env
