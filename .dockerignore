@@ -1,0 +1,62 @@
+# Build context for docker/Dockerfile. The context is the repository root
+# (docker-compose.yml sets `context: ..`), so without this file Docker would
+# ship ~2 GB to the daemon — .venv alone is 1.7 GB and data/ is 219 MB.
+#
+# Posture: exclude everything the running API does not need. What survives is
+# src/, pyproject.toml, uv.lock, README.md and LICENSE.
+
+# --- Environments and caches (rebuilt inside the image) ---
+.venv
+.venv/
+__pycache__/
+*.py[oc]
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- Version control and tooling metadata ---
+.git/
+.gitignore
+.dockerignore
+.pre-commit-config.yaml
+.python-version
+
+# --- Data and ML artifacts: NEVER inside the image ---
+# The dataset is DVC-managed and the API never reads it. The local registry is
+# excluded on purpose: the model is pulled at runtime from the MLflow service,
+# so baking mlruns/ or mlflow.db in would tie this image to one model version
+# and force a rebuild on every promotion.
+data/
+mlruns/
+mlflow.db
+models/
+reports/
+logs/
+.dvc/
+.dvcignore
+dvc.yaml
+dvc.lock
+
+# --- Training-time config ---
+# Read only by load_threshold() on the registration path; the serving threshold
+# travels inside the packaged artifact. Verified: `import src.api.main`
+# succeeds with params.yaml absent.
+params.yaml
+
+# --- Development and documentation ---
+notebooks/
+tests/
+docs/
+project_context/
+pipelines/
+Makefile
+main.py
+
+# --- Agent-local files (already git-ignored) ---
+.claude/
+CLAUDE.md
+
+# --- Local env overrides; only .env.example is tracked ---
+docker/.env
