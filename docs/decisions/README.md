@@ -10,8 +10,9 @@ source — for records 0001–0010, most often a cell in
 executed against `data/raw/creditcard.csv`; for 0011–0014, a tracked run in the MLflow
 `fraud-detection` experiment, identified by run id and re-derivable from it; for
 0015–0018, the registered versions of `fraud-detector` and the commands that produced
-them, quoted in each record; and for 0019–0021, live HTTP calls against a running API and the
-records it wrote, quoted in each record.
+them, quoted in each record; for 0019–0021, live HTTP calls against a running API and the
+records it wrote, quoted in each record; and for 0022–0025, the built image, the running
+containers and the HTTP calls served from inside them, quoted in each record.
 
 | # | Decision | Status |
 |---|----------|--------|
@@ -36,11 +37,15 @@ records it wrote, quoted in each record.
 | [0019](0019-api-response-contract.md) | API response contract: probability alongside the decision | Accepted |
 | [0020](0020-api-structure-and-state.md) | API structure: inference in `predict.py`, model in `app.state` | Accepted |
 | [0021](0021-prediction-log-and-api-tests.md) | Prediction log as Phase 8's contract; API testing strategy | Accepted |
+| [0022](0022-container-image-contract.md) | Container image: Python 3.12, non-root, body-matching health check | Accepted |
+| [0023](0023-compose-topology.md) | Compose topology: two services, readiness gate, MLflow Host allowlist | Accepted |
+| [0024](0024-environment-based-tracking-uri.md) | MLflow address from the environment, with a working local default | Accepted |
+| [0025](0025-phase-5-reproducibility-and-key-test-scope.md) | Phase 5 verification strategy and the honest scope of the "key test" | Accepted |
 
 Records **0001–0004** were established in Phase 0 (foundations); **0005–0010** in Phase 1
 (data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking);
 **0015–0018** in Phase 3 (model registry and packaging); **0019–0021** in Phase 4 (inference
-API).
+API); and **0022–0025** in Phase 5 (containerization).
 
 > These records feed the "Design decisions" section of the README (Phase 0, Step 10 — out
 > of scope here). They are the articulable rationale behind the system, kept in writing so
