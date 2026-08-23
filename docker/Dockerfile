@@ -65,6 +65,18 @@ WORKDIR /app
 
 COPY --from=builder --chown=appuser:appuser /app /app
 
+# WORKDIR created /app as root, and --chown above only applies to the entries
+# COPY writes, never to a pre-existing destination directory. So appuser could
+# read everything and create nothing: log_prediction()'s mkdir raised EACCES,
+# its except OSError branch swallowed it, and every prediction was dropped with
+# a WARNING while /predict still answered 200.
+#
+# That would have left Phase 8 with an empty baseline, since
+# 0021-prediction-log-and-api-tests.md makes this file the contract monitoring
+# reads. Only the log directory is handed over: /app stays root-owned so the
+# service cannot rewrite its own code, which is the point of dropping root.
+RUN mkdir -p /app/logs && chown appuser:appuser /app/logs
+
 # PATH puts the resolved venv first; PYTHONPATH is what actually makes `src`
 # importable, since the project itself is not installed as a package.
 ENV PATH="/app/.venv/bin:$PATH" \
