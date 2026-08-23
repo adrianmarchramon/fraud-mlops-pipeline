@@ -8,14 +8,15 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–4 complete** — foundations, a versioned and validated data
+> **Project status:** 🟢 **Phases 0–5 complete** — foundations, a versioned and validated data
 > pipeline (DVC + Pandera), tracked training on top of it, models managed as production
 > artifacts rather than loose experiments (packaged with their preprocessor and decision
 > threshold, registered in the MLflow Model Registry, promoted to `@production` only when they
-> beat the model already there), and **a typed REST API serving that model over HTTP** with
-> self-generated interactive docs. Phases 5–9 are under active construction — see the
-> [roadmap](#roadmap) below. This is a living project, built in gated phases, not an abandoned
-> prototype.
+> beat the model already there), **a typed REST API serving that model over HTTP** with
+> self-generated interactive docs, and **the whole system packaged as containers** — API and
+> MLflow brought up together by a single `docker compose up`, so it behaves the same on any
+> machine. Phases 6–9 are under active construction — see the [roadmap](#roadmap) below. This is
+> a living project, built in gated phases, not an abandoned prototype.
 
 ---
 
@@ -69,7 +70,7 @@ in the design-decision records: **[`docs/decisions/`](docs/decisions/)**.
 
 Chosen for a reproducible, production-shaped system at portfolio scale — no Kubernetes, no
 over-engineering. The **Phase** column shows when each tool enters the project; "✅ active" means
-it is already wired up in the repository today (through Phase 4).
+it is already wired up in the repository today (through Phase 5).
 
 | Concern | Tool | Phase |
 |---|---|---|
@@ -85,7 +86,7 @@ it is already wired up in the repository today (through Phase 4).
 | Experiment tracking | **MLflow** (SQLite backend) | ✅ active |
 | Model Registry | **MLflow Model Registry** (versions + aliases) | ✅ active |
 | Inference API | **FastAPI** + **Pydantic** + **Uvicorn** | ✅ active |
-| Containerization | **Docker** + Docker Compose | Phase 5 |
+| Containerization | **Docker** (multi-stage, non-root) + Docker Compose | ✅ active |
 | CI/CD | **GitHub Actions** (incl. a model-validation gate) | Phase 6 |
 | Orchestration | **Prefect** | Phase 7 |
 | Monitoring & drift | **Evidently** | Phase 8 |
@@ -200,6 +201,58 @@ Every served prediction is appended to `logs/predictions.jsonl` (input, output a
 timestamp, one JSON object per line). That file is git-ignored runtime output, and it is the
 raw material Phase 8 consumes to detect drift.
 
+### Running the whole system in containers
+
+From Phase 5 the API and MLflow run as containers, so the system behaves identically on any
+machine that has Docker — no Python, no uv, no local dependency set:
+
+```bash
+docker compose -f docker/docker-compose.yml up
+```
+
+That brings up two services on an internal Compose network:
+
+| Service | Address | What it is |
+|---|---|---|
+| `api` | <http://localhost:8000> | the FastAPI inference service — `/docs` for the Swagger UI |
+| `mlflow` | <http://localhost:5000> | the tracking server and Model Registry |
+
+The API locates the registry by **service name** (`http://mlflow:5000`), resolved by Compose's
+internal DNS — no IP address is hardcoded anywhere — and waits for MLflow to report *healthy*
+before starting, because it resolves the `@production` alias once at startup and never retries.
+Registered models live in a named Docker volume, so they outlive the containers and survive
+`docker compose down`.
+
+The image itself is multi-stage: dependencies resolve in a builder stage that never reaches the
+final image, which runs as a non-root user and carries a health check that inspects the
+*response body* of `/health` — `/health` returns `200` even with no model loaded, so checking
+only the status code would report a container that never reached MLflow as healthy.
+
+Once it is up, the API is used exactly as in the previous section:
+
+```bash
+curl http://localhost:8000/health          # {"status":"ok"}
+curl http://localhost:8000/model-info      # {"model_name":"fraud-detector","version":"1","alias":"production"}
+```
+
+> **One-time bootstrap.** The registry volume starts **empty** on a fresh clone, so the first
+> `docker compose up` gives you a healthy MLflow and an API honestly reporting
+> `{"status":"no_model"}`. Seeding it is the one step that still needs Python, because the model
+> is deliberately *not* baked into the image — that is what lets the same image serve whatever
+> version currently holds `@production`:
+>
+> ```bash
+> docker compose -f docker/docker-compose.yml up -d mlflow
+> MLFLOW_TRACKING_URI=http://localhost:5000 make train
+> MLFLOW_TRACKING_URI=http://localhost:5000 make register
+> docker compose -f docker/docker-compose.yml up -d
+> ```
+>
+> The same `train.py` and `register.py` populate either registry without a line changing — only
+> the environment variable differs. After this, the volume keeps the model and a plain
+> `docker compose up` is all that is needed. The reasoning is in
+> [`docs/decisions/0025-phase-5-reproducibility-and-key-test-scope.md`](docs/decisions/0025-phase-5-reproducibility-and-key-test-scope.md).
+
 ### Getting the data
 
 `make setup` prepares the *environment* but does **not** fetch the dataset — data is never
@@ -250,7 +303,7 @@ passes before the next begins.
 | 2 | Training + experiment tracking (MLflow) | ✅ Complete |
 | 3 | Model Registry & packaging | ✅ Complete |
 | 4 | Inference API (FastAPI) | ✅ Complete |
-| 5 | Containerization (Docker) | ⏳ Planned |
+| 5 | Containerization (Docker) | ✅ Complete |
 | 6 | CI/CD (GitHub Actions) | ⏳ Planned |
 | 7 | Orchestration (Prefect) | ⏳ Planned |
 | 8 | Monitoring, drift & closed retraining loop (Evidently) | ⏳ Planned |
