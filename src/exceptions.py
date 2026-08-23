@@ -55,3 +55,17 @@ class ModelRegistrationError(FraudPipelineError):
     same one-exception-per-module criterion that makes ModelTrainingError
     cover all of train.py.
     """
+
+
+class PredictionError(FraudPipelineError):
+    """Raised when the API cannot load the production model or score a request.
+
+    Covers the whole src/api/predict.py domain — resolving the @production
+    alias, loading the artifact, and scoring a transaction — on the same
+    one-exception-per-module criterion that makes ModelRegistrationError cover
+    all of register.py.
+
+    It stops at the inference boundary: src/api/main.py catches it and decides
+    which HTTP status the caller sees. Keeping that translation in the route
+    layer is what lets predict.py stay free of any FastAPI import.
+    """
