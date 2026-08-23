@@ -21,6 +21,21 @@ services:
       --backend-store-uri sqlite:////mlflow/mlflow.db
       --artifacts-destination /mlflow/artifacts
       --serve-artifacts
+    # MLflow 3.x validates the Host header of every request as DNS-rebinding
+    # protection. Its default allowlist covers loopback and the private IP
+    # ranges but NOT container names, so the API's http://mlflow:5000 was
+    # answered with "403 Invalid Host header - possible DNS rebinding attack
+    # detected" while host-side training over http://localhost:5000 worked.
+    # The failure was invisible to the healthcheck because /health and
+    # /version are exempt from that validation: the service reported healthy
+    # while being unusable for the registry calls that matter.
+    #
+    # Setting this REPLACES the default list rather than extending it, so both
+    # loopback forms are named explicitly — the healthcheck and `make train`
+    # against the published port depend on them. No wildcard: "*" switches the
+    # protection off entirely instead of naming who may reach the server.
+    environment:
+      MLFLOW_SERVER_ALLOWED_HOSTS: mlflow:5000,localhost:5000,127.0.0.1:5000
     ports:
       - "5000:5000"
     volumes:
