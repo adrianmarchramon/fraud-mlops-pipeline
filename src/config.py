@@ -28,3 +28,10 @@ EXPERIMENT_NAME = "fraud-detection"
 # They are two different MLflow entities and must not share a name.
 MODEL_NAME = "fraud-detector"
 MODELS_DIR = PROJECT_ROOT / "models"
+
+# Every prediction the API serves is appended here, one JSON object per line.
+# Phase 8 imports this exact constant and reads each record's "input" key, so
+# the name, the path and the record schema are a contract with a phase that
+# does not exist yet — not a preference. The directory is created lazily on
+# first write; it is a runtime artifact and stays out of Git.
+PREDICTIONS_LOG = PROJECT_ROOT / "logs" / "predictions.jsonl"
