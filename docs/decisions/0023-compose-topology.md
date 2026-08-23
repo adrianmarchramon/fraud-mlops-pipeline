@@ -92,6 +92,11 @@ them.
 - **Compose derives the project name from the file's directory**, so the deployed names are
   `docker-api`, `docker_mlflow-data` and `docker_default`. Renaming the project later would
   orphan the populated volume and require repopulating the registry.
+- **That name does not depend on the checkout**, because the compose file lives in `docker/`. Two
+  clones of this repository on one machine resolve to the same project and silently share the
+  same volume, network and image tag — confirmed against a clone under `/tmp`, which still
+  resolved `docker_mlflow-data`. Anything that must stay isolated (CI, a branch tested beside
+  `main`, a throwaway verification) has to pass `-p` or set `COMPOSE_PROJECT_NAME`. See ADR 0025.
 - **The allowlist is a maintenance point.** Renaming the service, changing its port, or adding a
   second client that addresses MLflow by another name all require editing this list, and the
   failure mode is a 403 that the health check cannot see.

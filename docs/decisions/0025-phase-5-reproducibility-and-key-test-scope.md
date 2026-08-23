@@ -14,11 +14,17 @@ calls the most revealing:
 The `phase-5-complete` tag is a public claim that this holds. It does not, as literally worded,
 and the reason is structural rather than a defect to be patched.
 
-Compose namespaces named volumes by project name, which it derives from the compose file's
-directory — this repository's artifacts are `docker_mlflow-data`, `docker-api` and
-`docker_default`. A fresh clone therefore gets its **own, empty** volume. The Model Registry
-inside it starts with nothing, `lifespan` finds no `@production` alias, and by ADR 0020 the API
-comes up anyway and reports `no_model` instead of crashing. Seeding that registry means running
+Compose namespaces named volumes by project name, which it derives from the **compose file's
+directory** — not the repository root. Because this project keeps its compose file in `docker/`,
+the project name is always `docker`, and the artifacts are `docker_mlflow-data`, `docker-api` and
+`docker_default` **regardless of what the checkout is called**. Two clones of this repository on
+one machine therefore share Docker state silently; verified in a clone at
+`/tmp/mlops-fraud-pipeline-phase5-test`, where `docker compose config` still resolved
+`docker_mlflow-data`.
+
+A registry that genuinely starts empty therefore has to be requested explicitly. When it is, the
+Model Registry inside it holds nothing, `lifespan` finds no `@production` alias, and by ADR 0020
+the API comes up anyway and reports `no_model` instead of crashing. Seeding that registry means running
 `train` and `register`, which requires Python and uv on the host. The gap is unavoidable given
 ADR 0015: the model is deliberately *not* baked into the image.
 
@@ -31,7 +37,13 @@ image from the committed `Dockerfile`, bring up `mlflow` alone, populate its reg
 retraining and registering against it, bring up the whole system, and serve real predictions
 over HTTP.
 
-The clone's own namespaced volume and image are deleted afterwards. **The working environment's
+**The check runs under an explicit `-p` project name** (`docker compose -p mlops-phase5-check
+…`). This is not a preference: without it the clone inherits the project name `docker` and would
+mount the working environment's populated volume, which would both invalidate the "empty
+registry" premise and put the only copy of the phase's registry at risk.
+
+The clone's own namespaced volume (`mlops-phase5-check_mlflow-data`) and image
+(`mlops-phase5-check-api`) are deleted afterwards. **The working environment's
 `docker_mlflow-data` is never touched** — this verification is deliberately redundant with it,
 not a replacement for it.
 
@@ -92,3 +104,6 @@ recreating it costs a full retrain and re-registration; the clone's namespacing 
 - **Two independent registries now exist** — the host's `mlflow.db` and the container's volume —
   with no synchronisation between them. That is correct and intentional, but it means "which
   registry?" is a question every future phase has to answer explicitly.
+- **Any second checkout of this repository on the same machine collides by default.** Phase 6's CI
+  and anyone testing a branch alongside `main` must pass `-p` or set `COMPOSE_PROJECT_NAME`, or
+  they will silently share — and can destroy — the registry volume of the other checkout.
