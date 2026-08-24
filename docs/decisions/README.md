@@ -11,8 +11,10 @@ executed against `data/raw/creditcard.csv`; for 0011–0014, a tracked run in th
 `fraud-detection` experiment, identified by run id and re-derivable from it; for
 0015–0018, the registered versions of `fraud-detector` and the commands that produced
 them, quoted in each record; for 0019–0021, live HTTP calls against a running API and the
-records it wrote, quoted in each record; and for 0022–0025, the built image, the running
-containers and the HTTP calls served from inside them, quoted in each record.
+records it wrote, quoted in each record; for 0022–0025, the built image, the running
+containers and the HTTP calls served from inside them, quoted in each record; and for
+0026–0030, the workflow runs, pull requests and published package on GitHub, cited by run
+id and re-queried live at phase closure rather than carried forward.
 
 | # | Decision | Status |
 |---|----------|--------|
@@ -41,11 +43,17 @@ containers and the HTTP calls served from inside them, quoted in each record.
 | [0023](0023-compose-topology.md) | Compose topology: two services, readiness gate, MLflow Host allowlist | Accepted |
 | [0024](0024-environment-based-tracking-uri.md) | MLflow address from the environment, with a working local default | Accepted |
 | [0025](0025-phase-5-reproducibility-and-key-test-scope.md) | Phase 5 verification strategy and the honest scope of the "key test" | Accepted |
+| [0026](0026-ci-workflow-shape.md) | CI workflow shape: triggers, check order, enforced `mypy --strict` | Accepted |
+| [0027](0027-branch-protection-boundary.md) | Branch protection as the enforcement boundary | Accepted |
+| [0028](0028-model-quality-gate-threshold.md) | Model quality gate: `MIN_PR_AUC = 0.75` and its derivation | Accepted (inherits 0002's illustrative caveat) |
+| [0029](0029-cd-workflow-and-ghcr-publication.md) | CD workflow, image tags, and public GHCR publication | Accepted |
+| [0030](0030-phase-6-verification-and-dod-deviations.md) | Phase 6 verification strategy, granularity, and DoD deviations | Accepted |
 
 Records **0001–0004** were established in Phase 0 (foundations); **0005–0010** in Phase 1
 (data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking);
 **0015–0018** in Phase 3 (model registry and packaging); **0019–0021** in Phase 4 (inference
-API); and **0022–0025** in Phase 5 (containerization).
+API); **0022–0025** in Phase 5 (containerization); and **0026–0030** in Phase 6 (automated
+CI/CD).
 
 > These records feed the "Design decisions" section of the README (Phase 0, Step 10 — out
 > of scope here). They are the articulable rationale behind the system, kept in writing so
