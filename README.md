@@ -1,5 +1,7 @@
 # Fraud MLOps Pipeline
 
+![CI](https://github.com/adrianmarchramon/fraud-mlops-pipeline/actions/workflows/ci.yml/badge.svg)
+
 **An end-to-end MLOps system for credit-card fraud detection that retrains itself when the world changes.**
 
 This repository is not a model in a notebook — it is the *production system* around the model:
