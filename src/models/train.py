@@ -20,7 +20,7 @@ Quality standard (as for every production module here):
 import json
 import logging
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any, TypedDict, cast
 
 import matplotlib
 import mlflow
@@ -293,9 +293,12 @@ def load_params() -> dict[str, Any]:
         ) from exc
 
     try:
-        return all_params["train"]
+        # yaml.safe_load() is typed as returning Any, so the annotation here is
+        # what states the contract this function promises to its callers.
+        params: dict[str, Any] = all_params["train"]
     except (KeyError, TypeError) as exc:
         raise ModelTrainingError("params.yaml has no top-level 'train' key") from exc
+    return params
 
 
 def resolve_model_params(train_params: dict[str, Any]) -> dict[str, Any]:
@@ -431,7 +434,7 @@ def train() -> None:
     mlflow.set_experiment(EXPERIMENT_NAME)
 
     try:
-        with mlflow.start_run(run_name=params["model"]):
+        with mlflow.start_run(run_name=params["model"]) as run:
             model = build_model(params)
             pipeline = build_training_pipeline(model, params)
             pipeline.fit(X_train, y_train)
@@ -443,7 +446,13 @@ def train() -> None:
             metrics = compute_metrics(y_test, y_pred, y_proba)
 
             mlflow.log_params(params)
-            mlflow.log_metrics(metrics)
+            # MetricsReport is a TypedDict, which mypy treats as having
+            # object-valued items, so it is not assignable to the
+            # dict[str, float] log_metrics() expects. The cast is sound —
+            # every field of MetricsReport is declared float — and it is
+            # preferred to widening compute_metrics()' return type, which is
+            # what documents exactly which four metrics this project reports.
+            mlflow.log_metrics(cast(dict[str, float], metrics))
             mlflow.log_artifact(str(save_confusion_matrix(y_test, y_pred, MODELS_DIR)))
             mlflow.log_artifact(str(save_pr_curve(y_test, y_proba, MODELS_DIR)))
 
@@ -468,7 +477,11 @@ def train() -> None:
                 json.dump(metrics, f, indent=2)
                 f.write("\n")  # trailing newline keeps end-of-file-fixer happy
 
-            run_id = mlflow.active_run().info.run_id
+            # The run yielded by the context manager, not a second lookup via
+            # mlflow.active_run(): that returns ActiveRun | None, so the old
+            # form would have raised AttributeError had the run ever failed to
+            # start. This binding cannot be None inside the with block.
+            run_id = run.info.run_id
             logger.info("Training completed: run_id=%s, metrics=%s", run_id, metrics)
     except Exception as exc:
         logger.error("Training run failed: %s", exc)

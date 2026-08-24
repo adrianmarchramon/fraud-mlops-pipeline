@@ -60,11 +60,14 @@ def load_params() -> PreprocessParams:
         ) from exc
 
     try:
-        return all_params["preprocess"]
+        # yaml.safe_load() is typed as returning Any, so the annotation here is
+        # what states the contract this function promises to its callers.
+        params: PreprocessParams = all_params["preprocess"]
     except (KeyError, TypeError) as exc:
         raise DataPreprocessingError(
             "params.yaml has no top-level 'preprocess' key"
         ) from exc
+    return params
 
 
 def build_preprocessor(scale_columns: list[str]) -> ColumnTransformer:
