@@ -10,15 +10,18 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–5 complete** — foundations, a versioned and validated data
+> **Project status:** 🟢 **Phases 0–6 complete** — foundations, a versioned and validated data
 > pipeline (DVC + Pandera), tracked training on top of it, models managed as production
 > artifacts rather than loose experiments (packaged with their preprocessor and decision
 > threshold, registered in the MLflow Model Registry, promoted to `@production` only when they
 > beat the model already there), **a typed REST API serving that model over HTTP** with
-> self-generated interactive docs, and **the whole system packaged as containers** — API and
+> self-generated interactive docs, **the whole system packaged as containers** — API and
 > MLflow brought up together by a single `docker compose up`, so it behaves the same on any
-> machine. Phases 6–9 are under active construction — see the [roadmap](#roadmap) below. This is
-> a living project, built in gated phases, not an abandoned prototype.
+> machine — and **a CI/CD pipeline that verifies and ships itself**: a protected `main` that
+> refuses any change failing lint, types, tests or the model-quality gate, and a container
+> image built and published automatically on every merge. Phases 7–9 are under active
+> construction — see the [roadmap](#roadmap) below. This is a living project, built in gated
+> phases, not an abandoned prototype.
 
 ---
 
@@ -72,7 +75,7 @@ in the design-decision records: **[`docs/decisions/`](docs/decisions/)**.
 
 Chosen for a reproducible, production-shaped system at portfolio scale — no Kubernetes, no
 over-engineering. The **Phase** column shows when each tool enters the project; "✅ active" means
-it is already wired up in the repository today (through Phase 5).
+it is already wired up in the repository today (through Phase 6).
 
 | Concern | Tool | Phase |
 |---|---|---|
@@ -89,7 +92,7 @@ it is already wired up in the repository today (through Phase 5).
 | Model Registry | **MLflow Model Registry** (versions + aliases) | ✅ active |
 | Inference API | **FastAPI** + **Pydantic** + **Uvicorn** | ✅ active |
 | Containerization | **Docker** (multi-stage, non-root) + Docker Compose | ✅ active |
-| CI/CD | **GitHub Actions** (incl. a model-validation gate) | Phase 6 |
+| CI/CD | **GitHub Actions** (incl. a model-validation gate) + **GHCR** | ✅ active |
 | Orchestration | **Prefect** | Phase 7 |
 | Monitoring & drift | **Evidently** | Phase 8 |
 | Deployment | **Render / Railway / Fly.io / Modal** (lightweight) | Phase 9 |
@@ -255,6 +258,34 @@ curl http://localhost:8000/model-info      # {"model_name":"fraud-detector","ver
 > `docker compose up` is all that is needed. The reasoning is in
 > [`docs/decisions/0025-phase-5-reproducibility-and-key-test-scope.md`](docs/decisions/0025-phase-5-reproducibility-and-key-test-scope.md).
 
+### How changes reach production
+
+Two workflows, deliberately split, because verifying a proposal and shipping an approved change
+are different problems.
+
+**[`ci.yml`](.github/workflows/ci.yml)** runs on every pull request and on pushes to `main`:
+`uv sync --locked --dev` (which fails loudly if `uv.lock` has drifted from `pyproject.toml`),
+then `ruff check`, `ruff format --check`, `mypy --strict`, and the full `pytest` suite — cheapest
+check first. That suite includes
+[`tests/test_model_quality.py`](tests/test_model_quality.py), the **model-validation gate**: it
+reads the PR-AUC that DVC versions in Git and fails the build if the model has degraded. Passing
+code tests says nothing about whether the model still works, and this is the check that closes
+that gap.
+
+`main` is protected: a pull request cannot be merged until that job is green. **[`cd.yml`](.github/workflows/cd.yml)**
+then triggers only on pushes to `main` — that is, only on merges — and builds
+[`docker/Dockerfile`](docker/Dockerfile) unchanged, publishing it to GHCR. It repeats none of the
+CI checks, because branch protection guarantees they already passed on that exact commit.
+
+The published image is public, so it can be pulled without credentials:
+
+```bash
+docker pull ghcr.io/adrianmarchramon/fraud-mlops-pipeline:latest
+```
+
+Tagged `latest`, `main`, and `sha-<commit>` — the last being an immutable handle for pinning a
+specific build.
+
 ### Getting the data
 
 `make setup` prepares the *environment* but does **not** fetch the dataset — data is never
@@ -306,7 +337,7 @@ passes before the next begins.
 | 3 | Model Registry & packaging | ✅ Complete |
 | 4 | Inference API (FastAPI) | ✅ Complete |
 | 5 | Containerization (Docker) | ✅ Complete |
-| 6 | CI/CD (GitHub Actions) | ⏳ Planned |
+| 6 | CI/CD (GitHub Actions) | ✅ Complete |
 | 7 | Orchestration (Prefect) | ⏳ Planned |
 | 8 | Monitoring, drift & closed retraining loop (Evidently) | ⏳ Planned |
 | 9 | Deployment, final README & demo | ⏳ Planned |
