@@ -45,8 +45,8 @@ stages:
       size: 1353
     - path: src/data/preprocess.py
       hash: md5
-      md5: b1bd43a7ac2b3e0dcfd9f13a83765403
-      size: 5133
+      md5: 1b37c0612d26010e709c134473ac6254
+      size: 5325
     - path: src/data/validate.py
       hash: md5
       md5: 01daab66ee01f7ce48fa8000b7ea6c45
@@ -61,35 +61,35 @@ stages:
     outs:
     - path: data/processed/preprocessor.joblib
       hash: md5
-      md5: ef05f3b25418c01cf49042c49252227f
+      md5: 098ca1401157d164602ed1dc689614f0
       size: 3016
     - path: data/processed/test.parquet
       hash: md5
-      md5: 41f3ae2cc1ebe7c4558ac2aa1c816fc2
-      size: 16829289
+      md5: 2e2d48118b1278b5399add1adca3d2ee
+      size: 16829300
     - path: data/processed/train.parquet
       hash: md5
-      md5: 74bda47b428122094c6ff70d1642b8fb
-      size: 61639016
+      md5: 7ebfafaf61fe7ce531b4f97873711e29
+      size: 61639027
   train:
     cmd: uv run python -m src.models.train
     deps:
     - path: data/processed/test.parquet
       hash: md5
-      md5: 41f3ae2cc1ebe7c4558ac2aa1c816fc2
-      size: 16829289
+      md5: 2e2d48118b1278b5399add1adca3d2ee
+      size: 16829300
     - path: data/processed/train.parquet
       hash: md5
-      md5: 74bda47b428122094c6ff70d1642b8fb
-      size: 61639016
+      md5: 7ebfafaf61fe7ce531b4f97873711e29
+      size: 61639027
     - path: src/config.py
       hash: md5
       md5: 49a9406492eb79dc33017220623c31f7
       size: 2069
     - path: src/models/train.py
       hash: md5
-      md5: e595b91cb3992ab31babe648a175273a
-      size: 17781
+      md5: 6ce23b74a12eda5e407112bc314a4e49
+      size: 18742
     params:
       params.yaml:
         train.logistic_regression:
