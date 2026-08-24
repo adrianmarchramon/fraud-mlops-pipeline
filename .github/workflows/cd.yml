@@ -1,0 +1,103 @@
+# Continuous delivery: builds the Phase 5 image and publishes it to GHCR.
+#
+# Phase 6, Step 5. This workflow deliberately runs no linting, no type checking
+# and no tests. That is not an omission — it is the design. The only commits
+# that reach main are those a protected pull request let through, and those are
+# exactly the commits ci.yml already validated, model quality gate included.
+# Re-running the checks here would spend minutes re-deriving a verdict GitHub
+# has already recorded against this very commit.
+#
+# The trust chain is: model gate decides whether CI is green -> branch
+# protection decides whether a red CI can merge -> merging is the only way to
+# reach main -> reaching main is the only thing that triggers this file. Its
+# weak link is the protection rule, not this workflow. Verified on
+# 2026-08-24 by PR #1, which was refused a merge (mergeStateStatus BLOCKED,
+# merged=null) while the required check "Lint, format, types and tests" failed.
+name: CD
+
+# push to main only, never pull_request. Firing on pull requests would build and
+# publish a 2.3 GB image for every intermediate commit of every proposal —
+# including the ones that are never merged — which would turn "published image"
+# from a record of decisions into a record of activity.
+on:
+  push:
+    branches: [main]
+
+# Declaring this block at all switches GITHUB_TOKEN away from the repository
+# default to ONLY what is listed here, so this revokes as much as it grants:
+# the token can read the code and write packages, and can do nothing to issues,
+# pull requests or deployments.
+permissions:
+  contents: read
+  packages: write
+
+# Queue, never cancel — the opposite of ci.yml. There, a newer push makes the
+# running verdict obsolete and cancelling is correct. Here, cancelling would
+# abort a half-finished registry push, so two quick merges wait their turn.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-push:
+    name: Build and publish the API image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      # Buildx enables the BuildKit features docker/Dockerfile already relies on:
+      # `--mount=type=cache` for the uv store and `--mount=type=bind` for
+      # uv.lock / pyproject.toml, which is what keeps the dependency layer cached
+      # independently of the source layer.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4.3.0
+
+      # No stored credential exists or needs to. GITHUB_TOKEN is minted for this
+      # run and destroyed when the job ends; against Docker Hub or ECR this step
+      # would instead mean creating a durable secret and owning its rotation.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tags are declared explicitly rather than left to the action's defaults,
+      # which for a branch push emit only `main` — a single mutable tag with no
+      # way to pin a specific build. Phase 9 will need to deploy a known-good
+      # image, so:
+      #   main            branch-tracking tag, moves with every merge
+      #   sha-<full sha>  immutable handle for pinning and rollback
+      #   latest          conventional entry point, default branch only
+      # The action also emits OCI labels (image.source, .revision, .created),
+      # which is what makes the GHCR package link back to the commit it came from.
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      # context: . and file: docker/Dockerfile reproduce exactly the pairing
+      # docker/docker-compose.yml already uses (context: .., dockerfile:
+      # docker/Dockerfile). The context must be the repository root because the
+      # Dockerfile bind-mounts uv.lock and pyproject.toml from it, while the
+      # Dockerfile itself lives one directory down. Phase 5's artifact is
+      # consumed exactly as written — not one line of it is rewritten here.
+      - name: Build and push
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Reuses and refreshes the layer cache GitHub stores for this repo, so
+          # a merge that touches only src/ does not re-resolve the whole ML
+          # dependency tree.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
