@@ -1,0 +1,75 @@
+# Continuous integration: every proposed change is linted, format-checked,
+# type-checked and tested before it can be considered for main.
+#
+# Phase 6, Step 2. What turns these results from advisory into binding is the
+# branch-protection rule of Step 3, configured in GitHub's repository settings
+# rather than here — a workflow can only ever report a status, never refuse a
+# merge. Until that rule exists, this file produces evidence, not enforcement.
+name: CI
+
+# push is restricted to main while pull_request covers everything else. With a
+# bare `on: [push, pull_request]`, every push to a branch that has an open PR
+# runs this workflow twice — double the minutes, duplicate checks on the same
+# commit. pull_request is also the more truthful of the two signals: it
+# evaluates the ephemeral merge commit, i.e. the code that would actually land,
+# rather than the branch head in isolation.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A newer push to the same ref makes the running verdict obsolete. Cancelling it
+# frees the runner instead of spending minutes computing an answer nobody reads.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, format, types and tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      # Pinned to an exact version because setup-uv publishes no floating major
+      # tag — there is no @v10 to track, so an exact pin is mandatory here
+      # rather than merely tidy.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      # --locked, never a bare `uv sync`. Bare sync silently REPAIRS a stale
+      # uv.lock and carries on, which would let CI pass on a resolution nobody
+      # committed and leave the mismatch for the next clone — or for
+      # docker/Dockerfile, which runs `uv sync --frozen` and would fail the
+      # image build after CI had already gone green.
+      #
+      # No python-version input: .python-version pins 3.12 and uv reads it, so
+      # the interpreter version stays declared in exactly one place.
+      - name: Install dependencies
+        run: uv sync --locked --dev
+
+      # Cheapest check first. ruff is milliseconds, mypy seconds, pytest has to
+      # import the whole ML stack — so a misplaced import costs seconds of
+      # feedback instead of minutes.
+      - name: Lint
+        run: uv run ruff check .
+
+      # --check verifies without rewriting: CI reports, it never edits. This is
+      # deliberately not `make format`, which runs `ruff format .` and would
+      # silently fix the very problem this step exists to detect.
+      - name: Format check
+        run: uv run ruff format --check .
+
+      # Bare `mypy`: strictness and the src/ scope live in [tool.mypy] in
+      # pyproject.toml, so this command means exactly the same thing on a runner
+      # as it does on a laptop. Nothing to keep in sync between the two.
+      - name: Type check
+        run: uv run mypy
+
+      # Includes tests/test_model_quality.py — the model quality gate, the one
+      # test that asserts a property of the MODEL rather than of the code.
+      - name: Tests
+        run: uv run pytest -v
