@@ -28,9 +28,11 @@ dev = [
     "jupyter>=1.1.1",
     "kaggle>=2.2.3",
     "mypy>=2.2.0",
+    "pandas-stubs>=3.0.5.260730",
     "pre-commit>=4.6.0",
     "pytest>=9.1.1",
     "ruff>=0.15.20",
+    "types-pyyaml>=6.0.12.20260815",
 ]
 
 [tool.ruff]
@@ -51,6 +53,25 @@ convention = "pep257"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "S101"]  # tests: names self-document; assert is the pytest idiom
+
+[tool.mypy]
+# Strict typing has been a declared standard since Phase 0 (see the header
+# docstring of every module in src/); this is the section that finally enforces
+# it. Configured here rather than passed as CLI flags so `uv run mypy` behaves
+# identically on a laptop and on a CI runner — the workflow invokes it bare.
+python_version = "3.12"
+files = ["src"]
+strict = true
+
+# scikit-learn, imbalanced-learn and joblib ship no inline types and publish no
+# stub package, so every import from them raises an unavoidable
+# [import-untyped]. They are silenced BY NAME rather than globally with
+# ignore_missing_imports: pandas and PyYAML are genuinely checked (via the
+# pandas-stubs and types-PyYAML dev dependencies), and any library that gains
+# stubs later starts being checked without anyone editing this file.
+[[tool.mypy.overrides]]
+module = ["sklearn.*", "imblearn.*", "joblib"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
