@@ -10,7 +10,7 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–6 complete** — foundations, a versioned and validated data
+> **Project status:** 🟢 **Phases 0–7 complete** — foundations, a versioned and validated data
 > pipeline (DVC + Pandera), tracked training on top of it, models managed as production
 > artifacts rather than loose experiments (packaged with their preprocessor and decision
 > threshold, registered in the MLflow Model Registry, promoted to `@production` only when they
@@ -19,7 +19,9 @@ engineering around it is the deliverable.
 > MLflow brought up together by a single `docker compose up`, so it behaves the same on any
 > machine — and **a CI/CD pipeline that verifies and ships itself**: a protected `main` that
 > refuses any change failing lint, types, tests or the model-quality gate, and a container
-> image built and published automatically on every merge. Phases 7–9 are under active
+> image built and published automatically on every merge, and **the pipeline orchestrated as
+> schedulable Prefect flows** — training chained end to end with per-stage retries, and a
+> scheduled monitoring flow wired to trigger retraining on its own. Phases 8–9 are under active
 > construction — see the [roadmap](#roadmap) below. This is a living project, built in gated
 > phases, not an abandoned prototype.
 
@@ -93,7 +95,7 @@ it is already wired up in the repository today (through Phase 6).
 | Inference API | **FastAPI** + **Pydantic** + **Uvicorn** | ✅ active |
 | Containerization | **Docker** (multi-stage, non-root) + Docker Compose | ✅ active |
 | CI/CD | **GitHub Actions** (incl. a model-validation gate) + **GHCR** | ✅ active |
-| Orchestration | **Prefect** | Phase 7 |
+| Orchestration | **Prefect** (flows, retries, cron + event triggers) | ✅ active |
 | Monitoring & drift | **Evidently** | Phase 8 |
 | Deployment | **Render / Railway / Fly.io / Modal** (lightweight) | Phase 9 |
 
@@ -322,6 +324,45 @@ dependencies actually changed, so editing a hyperparameter in `params.yaml` retr
 without recomputing the data. The exploration notebook `notebooks/01_exploration.ipynb` also
 runs end to end once the raw CSV is present.
 
+### Orchestrating the pipeline
+
+`dvc repro` answers *what* ran and with what result. Prefect answers *when* it runs and how
+reliably — schedule, retries, observability, event triggers. The two are complementary layers,
+and both stay.
+
+Start the server and the deployments in two terminals:
+
+```bash
+make prefect-server   # dashboard on http://localhost:4200
+make prefect-serve    # serves both deployments; leave running
+```
+
+Then run the training pipeline and watch each stage execute in the dashboard:
+
+```bash
+make prefect-train    # validate -> preprocess -> train -> register
+```
+
+Two flows are deployed:
+
+| Deployment | Trigger | What it does |
+|---|---|---|
+| `training-pipeline/on-demand` | manual, or by event | Chains validate → preprocess → train → register, each stage retrying on its own |
+| `monitoring-pipeline/daily` | cron `0 6 * * *` | Checks for drift and fires the training deployment if it finds any |
+
+Retries are calibrated per stage rather than set globally: validation is cheap and fails for
+transient reasons, so it retries three times; training costs minutes and usually fails
+deterministically, so it retries twice with a longer pause. A stage that exhausts its retries
+fails the flow, and validation runs first precisely so bad data stops the run before anything
+trains on it.
+
+> **The loop is wired, not yet armed.** `detect_drift()` in `src/monitoring/drift.py` is a
+> deliberate Phase 7 placeholder that always returns `False`, so the monitoring flow always takes
+> its "no drift" branch. Everything downstream of that predicate is real and verified end to end —
+> when drift is reported, retraining is triggered with no human in the path. **Phase 8 replaces
+> the placeholder with real Evidently detection**, and the loop closes with no change to the
+> orchestration.
+
 ---
 
 ## Roadmap
@@ -338,7 +379,7 @@ passes before the next begins.
 | 4 | Inference API (FastAPI) | ✅ Complete |
 | 5 | Containerization (Docker) | ✅ Complete |
 | 6 | CI/CD (GitHub Actions) | ✅ Complete |
-| 7 | Orchestration (Prefect) | ⏳ Planned |
+| 7 | Orchestration (Prefect) | ✅ Complete |
 | 8 | Monitoring, drift & closed retraining loop (Evidently) | ⏳ Planned |
 | 9 | Deployment, final README & demo | ⏳ Planned |
 
