@@ -15,8 +15,9 @@ cron below), and event-driven (the monitoring flow firing the training
 deployment when drift is detected).
 
 Run it with `make prefect-serve`. A bare `uv run python -m pipelines.serve`
-registers both deployments on an ephemeral server that dies with the process,
-so they never reach the dashboard and run_deployment() cannot resolve them.
+registers both deployments against a temporary server of its own, so nothing
+the running server serves picks them up -- and run_deployment() issued against
+the real server may not resolve them.
 """
 
 from typing import cast

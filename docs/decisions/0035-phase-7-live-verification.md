@@ -87,11 +87,11 @@ moved since the last `dvc repro`.
 
 ## Trade-offs / consequences
 
-### The finding: `PREFECT_API_URL` was never set, and failure was silent
+### The finding: `PREFECT_API_URL` was never set
 
-The real run exposed a bug no `.fn()` test could have caught. Prefect resolves its server from
+The real run exposed a gap no `.fn()` test could have caught. Prefect resolves its server from
 `PREFECT_API_URL`; when unset, `PREFECT_SERVER_EPHEMERAL_ENABLED` (true by default) makes it start
-a throwaway server instead. Proven with no server running:
+a temporary one instead. Proven with no server running:
 
 ```
 $ env -u PREFECT_API_URL uv run python -m pipelines.monitoring_pipeline
@@ -100,10 +100,22 @@ INFO | Flow run 'excellent-chipmunk' - Finished in state Completed()
 INFO | prefect - Stopping temporary server on http://127.0.0.1:8883
 ```
 
-The flow **succeeds**. Nothing errors. The run simply never reaches the dashboard, and the
-database holding it is destroyed at process exit — so the observability that is this phase's
-entire deliverable disappears without a single warning. Every run in this interaction only worked
-because the variable was set by hand.
+The flow **succeeds** and nothing errors, so the condition is invisible at the point of use. Every
+run in this interaction reached the intended server only because the variable was set by hand.
+
+> **Correction (2026-08-28, during the Phase 7 closure).** This record originally continued: *"the
+> run simply never reaches the dashboard, and the database holding it is destroyed at process
+> exit."* **Both halves were wrong**, and the error was over-reading the `Stopping temporary
+> server` line above as data loss. Prefect's ephemeral server is a temporary **API server
+> process**, not a temporary database: it uses the same `PREFECT_HOME/prefect.db`. Verified at
+> closure by re-querying that database — the `excellent-chipmunk` run produced by the command
+> above is still present, `COMPLETED`, with its task run and all six log lines intact.
+>
+> The decision below stands, for corrected reasons. Setting `PREFECT_API_URL` still matters:
+> without it a run is not observable **live** in an already-open dashboard, every invocation pays
+> seconds of temporary-server startup, two API servers end up writing the same SQLite file
+> concurrently, and `serve.py` would register deployments that no running server is serving. What
+> is *not* true is that runs are lost.
 
 **Fixed in the `Makefile`**, which is already the canonical interface: a `PREFECT_API_URL ?=
 http://localhost:4200/api` variable, exported by `prefect-serve` and a new `prefect-train` target,

@@ -23,10 +23,12 @@ serve:        ## Start API (available starting from Phase 4)
 	uv run uvicorn src.api.main:app --reload
 
 # Where the flows and the Prefect CLI look for the server. Without it Prefect
-# falls back to an ephemeral one (PREFECT_SERVER_EPHEMERAL_ENABLED is true by
-# default): the flow still SUCCEEDS, but on a throwaway database destroyed when
-# the process exits, so the run never reaches the dashboard and orchestration
-# silently stops being observable. Override for a non-local server with
+# starts a temporary one instead (PREFECT_SERVER_EPHEMERAL_ENABLED is true by
+# default). The run is still recorded -- that temporary server shares the same
+# ~/.prefect/prefect.db -- but it is not visible LIVE in an already-open
+# dashboard, each invocation pays seconds of startup, two API servers end up
+# writing one SQLite file, and deployments get registered with nothing serving
+# them. Override for a non-local server with
 # `make prefect-serve PREFECT_API_URL=http://host:4200/api`.
 PREFECT_API_URL ?= http://localhost:4200/api
 
