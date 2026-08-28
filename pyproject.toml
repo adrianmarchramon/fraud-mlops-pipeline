@@ -30,6 +30,7 @@ dev = [
     "mypy>=2.2.0",
     "pandas-stubs>=3.0.5.260730",
     "pre-commit>=4.6.0",
+    "prefect>=3.8.4",
     "pytest>=9.1.1",
     "ruff>=0.15.20",
     "types-pyyaml>=6.0.12.20260815",
@@ -60,7 +61,12 @@ convention = "pep257"
 # it. Configured here rather than passed as CLI flags so `uv run mypy` behaves
 # identically on a laptop and on a CI runner — the workflow invokes it bare.
 python_version = "3.12"
-files = ["src"]
+# Phase 7 extends the scope from src/ to pipelines/. Leaving the new
+# orchestration package out would have made "this repository is strictly typed"
+# stop being true in the same phase that added a top-level source directory to
+# it. Measured cost at the time: zero errors. tests/ remains deliberately out of
+# scope (docs/decisions/0026-ci-workflow-shape.md).
+files = ["src", "pipelines"]
 strict = true
 
 # scikit-learn, imbalanced-learn and joblib ship no inline types and publish no
