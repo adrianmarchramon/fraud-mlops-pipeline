@@ -13,6 +13,10 @@ Running this file gives the phase its three trigger mechanisms: manual (dashboar
 or `prefect deployment run "training-pipeline/on-demand"`), scheduled (the daily
 cron below), and event-driven (the monitoring flow firing the training
 deployment when drift is detected).
+
+Run it with `make prefect-serve`. A bare `uv run python -m pipelines.serve`
+registers both deployments on an ephemeral server that dies with the process,
+so they never reach the dashboard and run_deployment() cannot resolve them.
 """
 
 from typing import cast

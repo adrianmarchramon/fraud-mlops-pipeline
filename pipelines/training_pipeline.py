@@ -4,7 +4,7 @@ This module adds orchestration, not logic. Every task is a one-line call into a
 function that already existed and is already covered by its own tests; nothing
 from src/ is reimplemented, reconfigured or wrapped in new behaviour. That is
 only possible because those four entry points have been zero-argument and
-side-effect-complete since Phase 1 (see docs/decisions/0031-prefect-dependency.md
+side-effect-complete since Phase 1 (see docs/decisions/0031-prefect-dependency-group.md
 for the layering rationale).
 
 DVC and Prefect solve different problems and both stay: dvc.yaml answers "what
@@ -13,6 +13,13 @@ flow answers "when it ran and how reliably" (scheduling, retries, observability)
 Calling the Python functions directly rather than shelling out to `dvc repro`
 buys per-stage visibility in the dashboard and gives up DVC's cache -- this flow
 re-runs every stage whether or not its inputs changed.
+
+Run it with `make prefect-train`, not a bare `uv run python -m
+pipelines.training_pipeline`. Prefect resolves its server from PREFECT_API_URL
+and, when that is unset, silently starts an ephemeral one instead: the flow
+still succeeds, but on a throwaway database destroyed at process exit, so the
+run never appears in the dashboard. The Makefile sets the variable; nothing
+else does.
 """
 
 from prefect import flow, get_run_logger, task
