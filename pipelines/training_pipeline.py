@@ -16,10 +16,10 @@ re-runs every stage whether or not its inputs changed.
 
 Run it with `make prefect-train`, not a bare `uv run python -m
 pipelines.training_pipeline`. Prefect resolves its server from PREFECT_API_URL
-and, when that is unset, silently starts an ephemeral one instead: the flow
-still succeeds, but on a throwaway database destroyed at process exit, so the
-run never appears in the dashboard. The Makefile sets the variable; nothing
-else does.
+and, when that is unset, starts a temporary one instead. The run is still
+recorded (the temporary server shares ~/.prefect/prefect.db), but it is not
+visible live in an already-open dashboard and every invocation pays the
+server startup. The Makefile sets the variable; nothing else does.
 """
 
 from prefect import flow, get_run_logger, task
