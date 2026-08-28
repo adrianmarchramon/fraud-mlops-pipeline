@@ -12,9 +12,11 @@ executed against `data/raw/creditcard.csv`; for 0011–0014, a tracked run in th
 0015–0018, the registered versions of `fraud-detector` and the commands that produced
 them, quoted in each record; for 0019–0021, live HTTP calls against a running API and the
 records it wrote, quoted in each record; for 0022–0025, the built image, the running
-containers and the HTTP calls served from inside them, quoted in each record; and for
+containers and the HTTP calls served from inside them, quoted in each record; for
 0026–0030, the workflow runs, pull requests and published package on GitHub, cited by run
-id and re-queried live at phase closure rather than carried forward.
+id and re-queried live at phase closure rather than carried forward; and for 0031–0034,
+commands run against Prefect 3.8.4 in this repository — dependency resolution, `mypy`
+output, and the mutation tests quoted in each record.
 
 | # | Decision | Status |
 |---|----------|--------|
@@ -48,12 +50,16 @@ id and re-queried live at phase closure rather than carried forward.
 | [0028](0028-model-quality-gate-threshold.md) | Model quality gate: `MIN_PR_AUC = 0.75` and its derivation | Accepted (inherits 0002's illustrative caveat) |
 | [0029](0029-cd-workflow-and-ghcr-publication.md) | CD workflow, image tags, and public GHCR publication | Accepted |
 | [0030](0030-phase-6-verification-and-dod-deviations.md) | Phase 6 verification strategy, granularity, and DoD deviations | Accepted |
+| [0031](0031-prefect-dependency-group.md) | `prefect` as a development dependency, not a production one | Accepted |
+| [0032](0032-strict-typing-in-pipelines.md) | `mypy --strict` extended to `pipelines/`, and the `serve()` cast | Accepted |
+| [0033](0033-orchestration-design.md) | Orchestration design: task granularity, retries, no exception masking | Accepted |
+| [0034](0034-testing-prefect-flows.md) | Testing Prefect flows without a server, and the gaps that leaves | Accepted |
 
 Records **0001–0004** were established in Phase 0 (foundations); **0005–0010** in Phase 1
 (data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking);
 **0015–0018** in Phase 3 (model registry and packaging); **0019–0021** in Phase 4 (inference
-API); **0022–0025** in Phase 5 (containerization); and **0026–0030** in Phase 6 (automated
-CI/CD).
+API); **0022–0025** in Phase 5 (containerization); **0026–0030** in Phase 6 (automated
+CI/CD); and **0031–0034** in Phase 7 (orchestration).
 
 > These records feed the "Design decisions" section of the README (Phase 0, Step 10 — out
 > of scope here). They are the articulable rationale behind the system, kept in writing so
