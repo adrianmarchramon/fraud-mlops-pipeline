@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "evidently>=0.7.21",
     "fastapi>=0.139.0",
     "imbalanced-learn>=0.14.2",
     "joblib>=1.5.3",
@@ -69,14 +70,19 @@ python_version = "3.12"
 files = ["src", "pipelines"]
 strict = true
 
-# scikit-learn, imbalanced-learn and joblib ship no inline types and publish no
-# stub package, so every import from them raises an unavoidable
+# scikit-learn, imbalanced-learn, joblib and evidently ship no inline types and
+# publish no stub package, so every import from them raises an unavoidable
 # [import-untyped]. They are silenced BY NAME rather than globally with
 # ignore_missing_imports: pandas and PyYAML are genuinely checked (via the
 # pandas-stubs and types-PyYAML dev dependencies), and any library that gains
 # stubs later starts being checked without anyone editing this file.
+#
+# evidently 0.7.21 joins the list in Phase 8 — verified rather than assumed:
+# site-packages/evidently/ has no py.typed marker, and no types-evidently stub
+# package exists. prefect, by contrast, does ship one, which is why it is
+# absent here and genuinely type-checked.
 [[tool.mypy.overrides]]
-module = ["sklearn.*", "imblearn.*", "joblib"]
+module = ["sklearn.*", "imblearn.*", "joblib", "evidently.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
