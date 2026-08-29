@@ -16,9 +16,11 @@ containers and the HTTP calls served from inside them, quoted in each record; fo
 0026–0030, the workflow runs, pull requests and published package on GitHub, cited by run
 id and re-queried live at phase closure rather than carried forward; for 0031–0034,
 commands run against Prefect 3.8.4 in this repository — dependency resolution, `mypy`
-output, and the mutation tests quoted in each record; and for 0035–0036, the live Prefect
+output, and the mutation tests quoted in each record; for 0035–0036, the live Prefect
 flow runs of the Phase 7 verification, cited by run name and task state, re-queried from the
-local Prefect database at phase closure rather than carried forward.
+local Prefect database at phase closure rather than carried forward; and for 0037–0038, the
+built reference artifact and a probe of the installed `evidently` release, both measured in
+this repository and quoted in each record.
 
 | # | Decision | Status |
 |---|----------|--------|
@@ -58,12 +60,15 @@ local Prefect database at phase closure rather than carried forward.
 | [0034](0034-testing-prefect-flows.md) | Testing Prefect flows without a server, and the gaps that leaves | Accepted |
 | [0035](0035-phase-7-live-verification.md) | Phase 7 live verification: method, findings, and the ephemeral-server trap | Accepted |
 | [0036](0036-phase-7-closure.md) | Phase 7 closure: verification by re-query, and what is deliberately unfinished | Accepted |
+| [0037](0037-reference-dataset.md) | Drift reference: training rows, raw space, frozen as a DVC stage output | Accepted |
+| [0038](0038-evidently-dependency-and-api.md) | `evidently` as a production dependency, and reading its result by measurement | Accepted |
 
 Records **0001–0004** were established in Phase 0 (foundations); **0005–0010** in Phase 1
 (data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking);
 **0015–0018** in Phase 3 (model registry and packaging); **0019–0021** in Phase 4 (inference
 API); **0022–0025** in Phase 5 (containerization); **0026–0030** in Phase 6 (automated
-CI/CD); and **0031–0036** in Phase 7 (orchestration).
+CI/CD); **0031–0036** in Phase 7 (orchestration); and
+**0037–0038** in Phase 8 (monitoring and drift).
 
 > These records feed the "Design decisions" section of the README (Phase 0, Step 10 — out
 > of scope here). They are the articulable rationale behind the system, kept in writing so
