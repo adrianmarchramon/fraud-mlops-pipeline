@@ -139,28 +139,37 @@ def test_monitoring_pipeline_does_not_trigger_retraining_without_drift(
     monkeypatch: pytest.MonkeyPatch, silence_run_logger: None
 ) -> None:
     triggered: list[dict[str, Any]] = []
+    alerts: list[str] = []
 
     monkeypatch.setattr(mp, "check_drift_task", lambda: False)
     monkeypatch.setattr(mp, "run_deployment", lambda **kwargs: triggered.append(kwargs))
+    monkeypatch.setattr(mp, "send_alert", alerts.append)
 
     mp.monitoring_pipeline.fn()
 
     assert triggered == []
+    assert alerts == []
 
 
 def test_monitoring_pipeline_triggers_retraining_on_drift(
     monkeypatch: pytest.MonkeyPatch, silence_run_logger: None
 ) -> None:
     triggered: list[dict[str, Any]] = []
+    alerts: list[str] = []
 
     monkeypatch.setattr(mp, "check_drift_task", lambda: True)
     monkeypatch.setattr(mp, "run_deployment", lambda **kwargs: triggered.append(kwargs))
+    monkeypatch.setattr(mp, "send_alert", alerts.append)
 
     mp.monitoring_pipeline.fn()
 
     # timeout=0 is load-bearing: it makes the trigger fire-and-forget, so a
     # monitoring run never blocks for the minutes a retrain takes.
     assert triggered == [{"name": "training-pipeline/on-demand", "timeout": 0}]
+    # The alert is pinned because nothing else would catch its removal: drop
+    # the call and every other assertion here still passes, while the loop
+    # silently stops telling anyone it retrained.
+    assert alerts == ["Significant drift detected. Triggering retraining."]
 
 
 def test_check_drift_task_reports_what_detect_drift_returns(
