@@ -58,10 +58,14 @@ V_SHIFT_STD = 2.0
 AMOUNT_MIN = 1_000.0
 AMOUNT_MAX = 5_000.0
 
-# Time is left essentially in-distribution on purpose. Drifting 29 of 30
-# columns is stronger evidence than drifting all 30: it shows the detector is
-# judging each column on its own rather than flagging any unfamiliar batch
-# wholesale. 29/30 = 0.967 still clears config.DRIFT_THRESHOLD (0.5) easily.
+# Time spans roughly the reference's own range ([22, 172783]), so this bound
+# was originally chosen to leave one column undrifted. Measured, it does not:
+# both live runs reported a share of 1.0000, all 30 columns, Time included.
+# The reasoning behind the original choice was wrong in a way worth keeping
+# written down -- a K-S test compares distributional SHAPE, not range or mean,
+# and the real Time column is bimodal (two days of transaction cycles) while a
+# uniform draw is flat. Matching a mean does not make a distribution the same
+# distribution. See docs/decisions/0041-phase-8-closure.md.
 TIME_MIN = 0.0
 TIME_MAX = 200_000.0
 
