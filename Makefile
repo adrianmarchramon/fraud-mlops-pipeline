@@ -1,4 +1,4 @@
-.PHONY: setup lint format test train register serve prefect-server prefect-serve prefect-train clean
+.PHONY: setup lint format test train register serve prefect-server prefect-serve prefect-train prefect-monitor simulate-drift clean
 
 setup:        ## Install dependencies and configure pre-commit
 	uv sync
@@ -40,6 +40,12 @@ prefect-serve:  ## Serve both flow deployments: on-demand training + daily monit
 
 prefect-train:  ## Run the training flow against the local Prefect server (Phase 7)
 	PREFECT_API_URL=$(PREFECT_API_URL) uv run python -m pipelines.training_pipeline
+
+prefect-monitor: ## Trigger the monitoring deployment now instead of waiting for 06:00 (Phase 8)
+	PREFECT_API_URL=$(PREFECT_API_URL) uv run prefect deployment run monitoring-pipeline/daily
+
+simulate-drift: ## Send a deliberately shifted batch to the running API (Phase 8, Step 7)
+	uv run python -m scripts.simulate_drift
 
 clean:        ## Clean caches
 	rm -rf __pycache__ .pytest_cache .ruff_cache
