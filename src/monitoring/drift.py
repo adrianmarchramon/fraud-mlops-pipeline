@@ -1,10 +1,18 @@
 """Data-drift detection with Evidently.
 
-Implementation phase: Phase 8 - Monitoring and Drift (Steps 1-3).
+Implementation phase: Phase 8 - Monitoring and Drift (Steps 1-6).
 Current status: real column-level data drift. detect_drift() compares the
 fixed, DVC-versioned reference distribution (src/monitoring/reference.py)
 against a current window resolved from configuration, and reports whether the
-share of drifted columns has reached config.DRIFT_THRESHOLD.
+share of drifted columns has reached config.DRIFT_THRESHOLD. Every check also
+persists the interactive Evidently report to config.DRIFT_REPORT_PATH, and
+send_alert() announces a detection to the log and, optionally, a webhook.
+
+The whole module is deliberately one file. The architecture diagram's
+"dashboard" is a concept -- drift.py plus the HTML it emits -- not a service
+and not src/monitoring/dashboard.py, which stays empty: the report falls out
+of the same Evidently evaluation that produces the verdict, so rendering it
+elsewhere would mean running the comparison twice.
 
 This replaces the Phase 7 placeholder that returned a constant False. The
 signature is unchanged and takes no arguments, so pipelines/ needs no edit:
@@ -41,13 +49,16 @@ import logging
 from typing import Any
 
 import pandas as pd
+import requests
 from evidently import Report
 from evidently.presets import DataDriftPreset
 
 from src.config import (
     CURRENT_DATA_PATH,
     DRIFT_MIN_ROWS,
+    DRIFT_REPORT_PATH,
     DRIFT_THRESHOLD,
+    DRIFT_WEBHOOK_URL,
     REFERENCE_DATA_PATH,
 )
 from src.exceptions import DriftDetectionError
@@ -157,6 +168,42 @@ def _align_to_reference(reference: pd.DataFrame, current: pd.DataFrame) -> pd.Da
     return current[list(reference.columns)]
 
 
+def _save_report(evaluation: Any) -> None:
+    """Persist the Evidently run as a self-contained interactive HTML page.
+
+    This is the phase's visual deliverable: one section per feature, reference
+    and current distributions overlaid, the per-column test result, and the
+    summary of how many drifted. It is written from the run that already
+    computed the verdict rather than from a second comparison — the report and
+    the number are two views of one evaluation, and re-running Evidently to
+    render what it just calculated would double the work for nothing.
+
+    A write failure is warned, never raised, on the precedent
+    docs/decisions/0021-prediction-log-and-api-tests.md set for the prediction
+    log: an observability fault must not suppress a decision the system has
+    already reached. Losing the page costs a picture; losing the verdict costs
+    a retrain that should have fired.
+
+    Args:
+        evaluation: the object Report.run() returned. Typed Any because
+            evidently ships no py.typed marker (ADR 0038), so no stub describes
+            its snapshot type.
+    """
+    try:
+        DRIFT_REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+        evaluation.save_html(str(DRIFT_REPORT_PATH))
+    except OSError:
+        logger.warning(
+            "Could not write the drift report to %s; the drift verdict below "
+            "is unaffected",
+            DRIFT_REPORT_PATH,
+            exc_info=True,
+        )
+        return
+
+    logger.info("Drift report written to %s", DRIFT_REPORT_PATH)
+
+
 def _drifted_share(reference: pd.DataFrame, current: pd.DataFrame) -> float:
     """Run the Evidently comparison and return the share of drifted columns.
 
@@ -180,7 +227,10 @@ def _drifted_share(reference: pd.DataFrame, current: pd.DataFrame) -> float:
     # is silently wrong rather than an error if swapped: drift is not symmetric
     # in general, and the report would simply describe the wrong direction.
     report = Report([DataDriftPreset()], include_tests=True)
-    result: dict[str, Any] = report.run(current, reference).dict()
+    evaluation = report.run(current, reference)
+
+    _save_report(evaluation)
+    result: dict[str, Any] = evaluation.dict()
 
     for metric in result.get("metrics", []):
         if metric.get("config", {}).get("type") == DRIFTED_COLUMNS_METRIC:
@@ -235,3 +285,42 @@ def detect_drift() -> bool:
         drift_detected,
     )
     return drift_detected
+
+
+def send_alert(message: str) -> None:
+    """Announce a drift event: always to the log, and to a webhook if configured.
+
+    Two tiers, on the posture ADR 0024 established for the MLflow address: the
+    alert works with no configuration at all, and gains a real-time channel
+    when config.DRIFT_WEBHOOK_URL is set. Nobody has to wire up Slack to run
+    the pipeline, and nobody who has wired it up gets less.
+
+    A webhook failure is caught and logged rather than raised, and the
+    distinction matters more here than it looks. This function is called from
+    inside a Prefect task with retries=2: an escaping ConnectionError would
+    fail the monitoring run, burn both retries, and stop the retraining
+    trigger that follows this call from ever executing. A notification outage
+    would become a model outage. The drift verdict is real whether or not
+    Slack heard about it.
+
+    Only requests.RequestException is caught -- never a bare or generic
+    except. A TypeError from a malformed payload is this module's bug, not the
+    network's, and must surface.
+
+    Args:
+        message: what to announce. Interpolated into the log line and posted
+            as {"text": ...}, the shape Slack and Discord both accept.
+    """
+    logger.warning("DRIFT ALERT: %s", message)
+
+    if not DRIFT_WEBHOOK_URL:
+        return
+
+    try:
+        # timeout is mandatory, not defensive dressing: without it a webhook
+        # that accepts the connection and never answers would hang the
+        # monitoring flow indefinitely, holding a scheduled slot open until
+        # the next cron tick collides with it.
+        requests.post(DRIFT_WEBHOOK_URL, json={"text": f"⚠️ {message}"}, timeout=10)
+    except requests.RequestException as exc:
+        logger.error("Could not send the alert to the webhook: %s", exc)
