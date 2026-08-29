@@ -69,3 +69,18 @@ class PredictionError(FraudPipelineError):
     which HTTP status the caller sees. Keeping that translation in the route
     layer is what lets predict.py stay free of any FastAPI import.
     """
+
+
+class DriftDetectionError(FraudPipelineError):
+    """Raised when drift cannot be measured.
+
+    Covers the whole src/monitoring/ domain — building the reference
+    distribution, reading the reference or current datasets, and extracting a
+    verdict from the Evidently result.
+
+    It means "the question could not be answered", never "the answer is no
+    drift". That distinction is the reason this exists rather than returning
+    False on failure: a monitoring loop that silently reports "all clear" when
+    its own inputs are broken is worse than one that is switched off, because
+    it manufactures confidence nobody checked.
+    """
