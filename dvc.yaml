@@ -58,3 +58,34 @@ stages:
     metrics:
       - reports/metrics.json:
           cache: false
+
+  # Freezes the distribution drift is measured against (Phase 8, Step 1).
+  #
+  # A separate stage rather than an extra output of `preprocess`, because the
+  # two produce different things: preprocess writes the SCALED splits the model
+  # trains on, while this writes RAW-space rows to compare against raw API
+  # traffic. Bolting it onto preprocess would also make every monitoring-side
+  # parameter change invalidate the training data and force a retrain.
+  #
+  # It is a stage rather than a bare `dvc add`, so the artifact stays inside
+  # the graph: change monitoring.rows or the raw CSV and `dvc repro` rebuilds
+  # the baseline, exactly as it rebuilds everything else.
+  #
+  # src/data/preprocess.py is a real dependency, not an incidental import:
+  # reference.py reads the split parameters through its load_params() so the
+  # reference can never drift from the split the model was trained on.
+  reference:
+    cmd: uv run python -m src.monitoring.reference
+    deps:
+      - src/monitoring/reference.py
+      - src/data/preprocess.py
+      - src/data/ingest.py
+      - src/config.py
+      - data/raw/creditcard.csv
+    params:
+      - preprocess.test_size
+      - preprocess.random_state
+      - monitoring.rows
+      - monitoring.random_state
+    outs:
+      - data/monitoring/reference.parquet
