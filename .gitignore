@@ -22,6 +22,11 @@ data/processed/*
 # ML / test / lint artifacts
 .pytest_cache/
 .ruff_cache/
+# Evidently drift reports, rewritten on every monitoring run (Phase 8). Scoped
+# to the subdirectory on purpose: reports/metrics.json and
+# reports/validation.json are TRACKED and read by CI's model-quality gate from
+# a bare checkout, so a blanket reports/ rule would break the build.
+reports/drift/
 mlruns/
 mlflow.db
 # Prediction logs written by the API at runtime (Phase 4). Operational
