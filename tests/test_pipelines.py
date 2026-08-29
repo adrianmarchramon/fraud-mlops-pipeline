@@ -184,7 +184,7 @@ def test_check_drift_task_reports_what_detect_drift_returns(
 # body with an Evidently comparison that reads a DVC-versioned artifact no CI
 # runner has, so keeping the assertion would have given this offline suite a
 # dataset dependency (docs/decisions/0017-registry-testing-and-visibility.md).
-# Its replacement lives in tests/test_drift.py, added in the testing step.
+# Its replacement lives in tests/test_monitoring.py, added in the testing step.
 
 
 # --------------------------------------------------------------------------
