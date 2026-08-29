@@ -76,3 +76,32 @@ DRIFT_THRESHOLD = float(os.getenv("DRIFT_THRESHOLD", "0.5"))
 # the first scheduled monitoring run would fire a retrain off the three
 # smoke-test records already in the log.
 DRIFT_MIN_ROWS = int(os.getenv("DRIFT_MIN_ROWS", "100"))
+
+# Where the Evidently HTML report is written on every drift check. Under
+# reports/ with the other pipeline outputs, but in its own subdirectory so
+# .gitignore can exclude it by path: reports/metrics.json and
+# reports/validation.json are tracked in Git and read by CI from a bare
+# checkout, so a blanket reports/ rule would break the model-quality gate.
+#
+# A fixed filename rather than a timestamped one: nothing in this project
+# reads report history, the README and the demo want one stable path, and
+# timestamped files would accumulate in a git-ignored directory with no
+# retention policy. Each run overwrites the last.
+DRIFT_REPORTS_DIR = REPORTS_DIR / "drift"
+DRIFT_REPORT_PATH = Path(
+    os.getenv("DRIFT_REPORT_PATH", str(DRIFT_REPORTS_DIR / "drift_report.html"))
+)
+
+# Optional webhook (Slack, Discord, anything accepting a JSON POST) that
+# send_alert() notifies in addition to logging. Unset by default, and that is
+# the supported configuration rather than a degraded one: the alert works with
+# no setup at all and gains a real-time channel when a URL is provided, the
+# same posture MLFLOW_TRACKING_URI takes above.
+#
+# Read here rather than inline in send_alert() because this project keeps its
+# whole configuration surface in one file; the reference material puts the
+# os.getenv call inside the function. Consequence to know: like every constant
+# here it binds at import, so a test overriding it must patch
+# src.monitoring.drift.DRIFT_WEBHOOK_URL, not this module
+# (docs/decisions/0021-prediction-log-and-api-tests.md hit the same edge).
+DRIFT_WEBHOOK_URL = os.getenv("DRIFT_WEBHOOK_URL", "")
