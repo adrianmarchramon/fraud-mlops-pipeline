@@ -21,9 +21,11 @@ flow runs of the Phase 7 verification, cited by run name and task state, re-quer
 local Prefect database at phase closure rather than carried forward; for 0037–0038, the
 built reference artifact and a probe of the installed `evidently` release, both measured in
 this repository and quoted in each record; for 0039, the generated Evidently report and
-the live output of both `send_alert` paths, quoted in the record; and for 0040, the live
+the live output of both `send_alert` paths, quoted in the record; for 0040, the live
 closed-loop demonstration — flow-run names, task states and Registry versions, read back from
-the Prefect and MLflow databases rather than narrated.
+the Prefect and MLflow databases rather than narrated; and for 0041, a second full run of that
+same loop, executed at phase closure rather than cited from the interaction that produced the
+first.
 
 | # | Decision | Status |
 |---|----------|--------|
@@ -67,13 +69,14 @@ the Prefect and MLflow databases rather than narrated.
 | [0038](0038-evidently-dependency-and-api.md) | `evidently` as a production dependency, and reading its result by measurement | Accepted |
 | [0039](0039-alerting-and-report-placement.md) | Two-tier alerting, and why the drift report is not a dashboard module | Accepted |
 | [0040](0040-closed-loop-demonstration.md) | How the closed loop was demonstrated, and what it left behind | Accepted |
+| [0041](0041-phase-8-closure.md) | Phase 8 closure: verification by rerun, and what the tag claims | Accepted |
 
 Records **0001–0004** were established in Phase 0 (foundations); **0005–0010** in Phase 1
 (data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking);
 **0015–0018** in Phase 3 (model registry and packaging); **0019–0021** in Phase 4 (inference
 API); **0022–0025** in Phase 5 (containerization); **0026–0030** in Phase 6 (automated
 CI/CD); **0031–0036** in Phase 7 (orchestration); and
-**0037–0040** in Phase 8 (monitoring and drift).
+**0037–0041** in Phase 8 (monitoring and drift).
 
 > These records feed the "Design decisions" section of the README (Phase 0, Step 10 — out
 > of scope here). They are the articulable rationale behind the system, kept in writing so
