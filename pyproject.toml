@@ -68,7 +68,12 @@ python_version = "3.12"
 # stop being true in the same phase that added a top-level source directory to
 # it. Measured cost at the time: zero errors. tests/ remains deliberately out of
 # scope (docs/decisions/0026-ci-workflow-shape.md).
-files = ["src", "pipelines"]
+#
+# Phase 8 adds scripts/ on the same argument: scripts/simulate_drift.py is the
+# first file this project has ever placed outside src/ and pipelines/, and
+# letting it escape strict typing merely because of where it lives would make
+# "this repository is strictly typed" quietly conditional on directory name.
+files = ["src", "pipelines", "scripts"]
 strict = true
 
 # scikit-learn, imbalanced-learn, joblib and evidently ship no inline types and
