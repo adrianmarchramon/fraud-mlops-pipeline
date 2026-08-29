@@ -1,11 +1,14 @@
 """Prefect flow that checks for drift on a schedule and triggers retraining.
 
-This is the wiring of the project's closed loop, built before the thing it
-detects. The predicate is a Phase 7 placeholder pinned to False
-(src/monitoring/drift.py), but every other link is real: the flow is scheduled
-by pipelines/serve.py, it evaluates the predicate, and a True reaches a live
-retraining trigger with no human in the path. Phase 8 replaces only the
-predicate, and the loop energises with no change here.
+This is the project's closed loop, and as of Phase 8 every link in it is real.
+Phase 7 built the wiring around a placeholder predicate pinned to False; Phase
+8 replaced that predicate with an Evidently comparison and added the alert, so
+a scheduled run now measures drift against a versioned reference, announces a
+detection, and reaches a live retraining trigger with no human in the path.
+
+The wiring itself is unchanged from the Phase 7 version verified live -- same
+task, same retry budget, same fire-and-forget trigger. Phase 8 added exactly
+one line to the drift branch.
 
 The detect_drift import sits at module level, unlike the reference material's
 function-level import. There is no circular-import risk -- src/monitoring/
@@ -16,7 +19,7 @@ everywhere else in this repository.
 from prefect import flow, get_run_logger, task
 from prefect.deployments import run_deployment
 
-from src.monitoring.drift import detect_drift
+from src.monitoring.drift import detect_drift, send_alert
 
 # The deployment pipelines/serve.py registers for the training flow. This string
 # is a real coupling between two files: "training-pipeline" is the @flow name in
@@ -54,6 +57,10 @@ def monitoring_pipeline() -> None:
 
     if check_drift_task():
         logger.warning("Drift detected: triggering retraining")
+        # Announce before triggering, and through a different sink: this
+        # logger writes to the Prefect dashboard, send_alert() writes to the
+        # module log and, when configured, to a webhook someone actually reads.
+        send_alert("Significant drift detected. Triggering retraining.")
         run_deployment(name=TRAINING_DEPLOYMENT, timeout=0)
     else:
         logger.info("No significant drift. Retraining skipped.")
