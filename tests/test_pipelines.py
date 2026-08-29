@@ -25,7 +25,6 @@ import pytest
 from pipelines import monitoring_pipeline as mp
 from pipelines import serve as sv
 from pipelines import training_pipeline as tp
-from src.monitoring.drift import detect_drift
 
 
 @pytest.fixture
@@ -171,10 +170,12 @@ def test_check_drift_task_reports_what_detect_drift_returns(
     assert mp.check_drift_task.fn() is True
 
 
-def test_detect_drift_placeholder_reports_no_drift() -> None:
-    # The real, unpatched Phase 7 placeholder. Phase 8 replaces this body; until
-    # then the monitoring flow must always take its "no drift" branch.
-    assert detect_drift() is False
+# The real, unpatched detect_drift() is deliberately no longer asserted here.
+# Phase 7 pinned it to False while it was a placeholder; Phase 8 replaced that
+# body with an Evidently comparison that reads a DVC-versioned artifact no CI
+# runner has, so keeping the assertion would have given this offline suite a
+# dataset dependency (docs/decisions/0017-registry-testing-and-visibility.md).
+# Its replacement lives in tests/test_drift.py, added in the testing step.
 
 
 # --------------------------------------------------------------------------
