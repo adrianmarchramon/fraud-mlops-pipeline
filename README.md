@@ -10,7 +10,7 @@ orchestration, and drift monitoring wired into a closed loop that **detects data
 triggers automatic retraining**. The fraud model is deliberately the least important part; the
 engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–7 complete** — foundations, a versioned and validated data
+> **Project status:** 🟢 **Phases 0–8 complete** — foundations, a versioned and validated data
 > pipeline (DVC + Pandera), tracked training on top of it, models managed as production
 > artifacts rather than loose experiments (packaged with their preprocessor and decision
 > threshold, registered in the MLflow Model Registry, promoted to `@production` only when they
@@ -21,9 +21,12 @@ engineering around it is the deliverable.
 > refuses any change failing lint, types, tests or the model-quality gate, and a container
 > image built and published automatically on every merge, and **the pipeline orchestrated as
 > schedulable Prefect flows** — training chained end to end with per-stage retries, and a
-> scheduled monitoring flow wired to trigger retraining on its own. Phases 8–9 are under active
-> construction — see the [roadmap](#roadmap) below. This is a living project, built in gated
-> phases, not an abandoned prototype.
+> scheduled monitoring flow that triggers retraining on its own — and, closing the circle,
+> **drift monitoring wired into a loop that has been observed running end to end**: shifted
+> traffic reaches the API, Evidently measures the shift against a versioned reference, an alert
+> fires, and a new model is trained and registered with no human in the path. Phase 9
+> (deployment and presentation) is what remains — see the [roadmap](#roadmap) below. This is a
+> living project, built in gated phases, not an abandoned prototype.
 
 ---
 
@@ -96,7 +99,7 @@ it is already wired up in the repository today (through Phase 6).
 | Containerization | **Docker** (multi-stage, non-root) + Docker Compose | ✅ active |
 | CI/CD | **GitHub Actions** (incl. a model-validation gate) + **GHCR** | ✅ active |
 | Orchestration | **Prefect** (flows, retries, cron + event triggers) | ✅ active |
-| Monitoring & drift | **Evidently** | Phase 8 |
+| Monitoring & drift | **Evidently** (data drift, HTML reports, threshold alerts) | ✅ active |
 | Deployment | **Render / Railway / Fly.io / Modal** (lightweight) | Phase 9 |
 
 ---
@@ -356,12 +359,52 @@ deterministically, so it retries twice with a longer pause. A stage that exhaust
 fails the flow, and validation runs first precisely so bad data stops the run before anything
 trains on it.
 
-> **The loop is wired, not yet armed.** `detect_drift()` in `src/monitoring/drift.py` is a
-> deliberate Phase 7 placeholder that always returns `False`, so the monitoring flow always takes
-> its "no drift" branch. Everything downstream of that predicate is real and verified end to end —
-> when drift is reported, retraining is triggered with no human in the path. **Phase 8 replaces
-> the placeholder with real Evidently detection**, and the loop closes with no change to the
-> orchestration.
+> **The loop is armed, and it has been watched running.** Phase 7 built this wiring around a
+> placeholder predicate; Phase 8 replaced it with real detection and changed nothing else. The
+> whole chain has been observed end to end twice: 300 transactions with a deliberately shifted
+> distribution were posted to the live API, which scored and logged them like any other traffic;
+> the scheduled monitoring flow read that log, measured **100% of columns drifted** against the
+> versioned reference, raised the alert, and fired the training deployment; four stages later a
+> new model version existed in the Registry. Nobody touched anything between the first request
+> and the new version.
+
+---
+
+### Watching the model for drift
+
+A model does not fail loudly. It keeps answering `200`, keeps returning probabilities, and
+quietly stops catching fraud as the world moves away from what it learned. Detecting that is
+what turns this repository from a deployment into a system that maintains itself.
+
+**What is compared.** One side is a **frozen reference**: 5,000 rows drawn from the training
+split in raw feature space, built by a dedicated DVC stage so the baseline has a hash and two
+runs a month apart answer the same question. The other is **real production traffic** — the
+prediction log the API has been appending to since Phase 4. Evidently runs a per-column
+statistical test across all 30 features and reports the share that drifted; the loop fires when
+that share reaches `DRIFT_THRESHOLD`.
+
+```bash
+uv run dvc repro reference   # build the frozen baseline (once)
+make simulate-drift          # post 300 deliberately shifted transactions to the API
+make prefect-monitor         # run the drift check now instead of waiting for 06:00
+```
+
+Every check writes an **interactive HTML report** to `reports/drift/drift_report.html` — a
+per-feature view with the reference and current distributions overlaid, each column's test
+result, and the drifted summary. It is the most legible artifact this project produces: the
+shift is visible at a glance, without reading a line of code.
+
+**What this measures, and what it does not.** This is **data drift** — a change in the input
+distribution, P(X). It is deliberately not *concept drift*, a change in the relationship between
+features and the outcome, because measuring that needs ground truth this system never receives:
+in fraud you learn a transaction was fraudulent days or weeks later, when the chargeback arrives.
+That **label delay** is exactly why input drift is worth acting on — it is the signal that
+arrives while there is still time to react.
+
+**A guard against crying wolf.** Below `DRIFT_MIN_ROWS` records the check declines to answer
+rather than guess, and says so in the log. This is not defensive padding: Evidently on a 3-row
+window reports every column drifted, so without the floor the first scheduled run would retrain
+on noise.
 
 ---
 
@@ -380,7 +423,7 @@ passes before the next begins.
 | 5 | Containerization (Docker) | ✅ Complete |
 | 6 | CI/CD (GitHub Actions) | ✅ Complete |
 | 7 | Orchestration (Prefect) | ✅ Complete |
-| 8 | Monitoring, drift & closed retraining loop (Evidently) | ⏳ Planned |
+| 8 | Monitoring, drift & closed retraining loop (Evidently) | ✅ Complete |
 | 9 | Deployment, final README & demo | ⏳ Planned |
 
 ---
@@ -392,7 +435,7 @@ src/            # all production code, as an importable package
   data/         # ingest, validate (Pandera), preprocess
   models/       # train, evaluate, register (MLflow)
   api/          # FastAPI app, Pydantic schemas, prediction logic
-  monitoring/   # drift detection (Evidently), dashboard
+  monitoring/   # drift detection (Evidently), reference builder, HTML report
   config.py     # centralized configuration
 pipelines/      # Prefect orchestration flows (kept separate from src/)
 tests/          # test_data, test_model, test_api
