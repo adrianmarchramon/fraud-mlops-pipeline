@@ -59,3 +59,25 @@ evaluate:
   cv_folds: 5
   cost_fp: 4.0
   cost_fn: 137.0
+
+# Versioned parameters for the drift-monitoring reference distribution
+# (Phase 8, Step 1), consumed by src/monitoring/reference.py via the
+# `reference` stage in dvc.yaml.
+#
+# The reference is drawn from the TRAINING rows, in RAW feature space, because
+# those two properties are what make the comparison mean anything. Training
+# rows are the distribution the model actually learned — the thing drift is
+# defined against — and raw space is forced by the data on the other side of
+# the comparison: the API logs untransformed payloads, while
+# data/processed/test.parquet has Time and Amount standardized
+# (docs/decisions/0037-reference-dataset.md).
+#
+# `rows` is a sample, not the full 227,845-row training split: a reference an
+# order of magnitude larger than any realistic current window buys no
+# statistical power and costs time on every monitoring run. `random_state`
+# fixes which rows, so the artifact is byte-reproducible from the DVC-pinned
+# CSV. Changing either value re-runs the stage and produces a NEW baseline —
+# drift numbers either side of that change are not comparable.
+monitoring:
+  rows: 5000
+  random_state: 42
