@@ -42,3 +42,37 @@ MODELS_DIR = PROJECT_ROOT / "models"
 # does not exist yet — not a preference. The directory is created lazily on
 # first write; it is a runtime artifact and stays out of Git.
 PREDICTIONS_LOG = PROJECT_ROOT / "logs" / "predictions.jsonl"
+
+# ---------------------------------------------------------------------------
+# Drift monitoring (Phase 8)
+# ---------------------------------------------------------------------------
+# The fixed baseline drift is measured against, built by the `reference` stage
+# in dvc.yaml and versioned like any other pipeline output. It is an artifact
+# rather than a computation on purpose: a baseline recomputed per run makes a
+# changed verdict ambiguous between "reality moved" and "the yardstick moved".
+MONITORING_DIR = DATA_DIR / "monitoring"
+REFERENCE_DATA_PATH = Path(
+    os.getenv("REFERENCE_DATA_PATH", str(MONITORING_DIR / "reference.parquet"))
+)
+
+# The other side of the comparison. It defaults to the API's own prediction log
+# — the contract ADR 0021 froze in Phase 4 — and is overridable so a shifted
+# batch can be pointed at without editing code. It is deliberately NOT a
+# detect_drift() argument: Phase 7 wired that call as detect_drift(), and the
+# monitoring flow must keep working unchanged.
+CURRENT_DATA_PATH = Path(os.getenv("CURRENT_DATA_PATH", str(PREDICTIONS_LOG)))
+
+# Share of drifted columns at or above which detect_drift() reports drift.
+# This is the whole decision policy of the monitoring loop compressed into one
+# number, which is exactly why it lives here and not inside the function:
+# too low and the system burns a full retrain on noise until its operator
+# learns to ignore it; too high and the loop is decorative while recall decays.
+DRIFT_THRESHOLD = float(os.getenv("DRIFT_THRESHOLD", "0.5"))
+
+# Below this many current rows, detect_drift() declines to answer instead of
+# guessing. Measured, not assumed: Evidently 0.7.21 run on a 3-row current
+# frame against a 500-row reference reports share=1.0 — every column drifted —
+# because a K-S test on three points is noise, not evidence. Without this floor
+# the first scheduled monitoring run would fire a retrain off the three
+# smoke-test records already in the log.
+DRIFT_MIN_ROWS = int(os.getenv("DRIFT_MIN_ROWS", "100"))
