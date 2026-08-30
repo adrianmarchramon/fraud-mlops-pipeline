@@ -20,9 +20,15 @@ repos:
         exclude: ^deploy/model/
       - id: check-yaml
       # The 1 MB ceiling is the guard that keeps datasets out of Git, so it is
-      # not raised. docs/videos/ is excluded by path instead: the demo video is
-      # a deliberate, reviewed 3.4 MB binary, and widening the limit for
-      # everything would silently permit the next one nobody looked at.
+      # not raised. Two paths are excluded instead, each a deliberate, reviewed
+      # binary; widening the limit for everything would silently permit the next
+      # one nobody looked at.
+      #   docs/videos/       the 3.4 MB introduction video
+      #   docs/whitepaper.pdf  the 1.2 MB technical paper. Compression was tried
+      #     and rejected: ghostscript /ebook reaches 446 KB but visibly smears
+      #     the screenshot text, including the "Wasserstein distance (normed)"
+      #     column that Figure 4 exists to evidence. /printer fits in 1017 KB
+      #     with 7 KB of headroom, which the next edit would exhaust.
       - id: check-added-large-files
         args: [--maxkb=1024]  # EDA notebook is committed with plot outputs (~540 KB)
-        exclude: ^docs/videos/
+        exclude: ^docs/(videos/|whitepaper\.pdf$)
