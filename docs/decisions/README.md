@@ -72,13 +72,14 @@ first.
 | [0041](0041-phase-8-closure.md) | Phase 8 closure: verification by rerun, and what the tag claims | Accepted |
 | [0042](0042-bundled-model.md) | The public deployment carries its model inside the image | Accepted (supersedes one alternative of 0022, in scope) |
 | [0043](0043-render-deployment.md) | Render, the free plan, and deploying the image CI already published | Accepted |
+| [0044](0044-phase-9-closure.md) | Phase 9 closure: what the final tag claims, and what it does not | Accepted |
 
 Records **0001–0004** were established in Phase 0 (foundations); **0005–0010** in Phase 1
 (data pipeline and versioning); **0011–0014** in Phase 2 (training and experiment tracking);
 **0015–0018** in Phase 3 (model registry and packaging); **0019–0021** in Phase 4 (inference
 API); **0022–0025** in Phase 5 (containerization); **0026–0030** in Phase 6 (automated
 CI/CD); **0031–0036** in Phase 7 (orchestration); **0037–0041** in Phase 8
-(monitoring and drift); and **0042–0043** in Phase 9 (deployment and presentation).
+(monitoring and drift); and **0042–0044** in Phase 9 (deployment and presentation).
 
 > These records feed the "Design decisions" section of the README (Phase 0, Step 10 — out
 > of scope here). They are the articulable rationale behind the system, kept in writing so
