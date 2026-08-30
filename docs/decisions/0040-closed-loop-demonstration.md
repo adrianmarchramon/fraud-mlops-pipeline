@@ -86,9 +86,15 @@ refused an equal model, which is the gate working, not the demo failing.
 **The measured share was 1.0000 across 303 rows**, and this corrected a prediction of mine. I had
 designed `Time ~ U(0, 200_000)` to sit *in* distribution (reference range [22, 172783], means
 94,895 vs 100,540) and expected 29/30 columns to drift. All 30 did. The reasoning was wrong in an
-instructive way: a K-S test compares **distributional shape**, not range or mean, and the real
+instructive way: the drift test compares **whole distributions**, not range or mean, and the real
 `Time` column is bimodal — two days of transaction cycles — while a uniform draw is flat. Matching
 the mean does not make a distribution the same distribution.
+
+> **Correction (2026-08-30).** This paragraph originally attributed the comparison to *"a K-S
+> test"*. It was not: with a 5000-row reference Evidently selects the **normed Wasserstein
+> distance**, and the report from this very run names it 30 times. The reasoning above is unchanged
+> — both tests compare distributions rather than summary statistics — but the test was misnamed.
+> See the correction in [0038](0038-evidently-dependency-and-api.md).
 
 **The report from the run** is at `reports/drift/drift_report.html`, 5,783,562 bytes, valid HTML,
 containing the Data Drift summary and per-column sections. Column means it depicts:
