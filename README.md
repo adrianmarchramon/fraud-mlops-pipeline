@@ -16,7 +16,7 @@ deliberately the least interesting part; the engineering around it is the delive
 
 **→ Try it live: [fraud-detection-api-unsm.onrender.com/docs](https://fraud-detection-api-unsm.onrender.com/docs)**
 
-**→ [▶ Watch the 20-second introduction](docs/videos/project_resume.mp4)** — what the system is,
+**→ [▶ Watch the 20-second introduction](docs/videos/intro.mp4)** — what the system is,
 at a glance. The loop it describes is walked through in full [further down](#the-closed-loop-drift--retrain).
 
 ---
@@ -61,11 +61,10 @@ Or open **[/docs](https://fraud-detection-api-unsm.onrender.com/docs)** and send
 browser — the Swagger UI is generated from the Pydantic schemas, so it cannot drift from what the
 API actually accepts.
 
-> **⏳ The first request may take up to two minutes. This is normal — the link is not broken.**
-> The service runs on a free tier that sleeps after a period without traffic. Measured: after
-> several hours idle, the first request took **111 seconds** to wake the container; after that,
-> every request is around **0.3 s**. A short idle does not trigger it — after 17 minutes the
-> service was still warm. If your first `curl` seems to hang, leave it running.
+> **⏳ The first request can take up to three minutes. This is normal — the link is not broken.**
+> The service runs on a free tier that sleeps when idle. Measured three times: still warm after
+> 17 minutes, **191 s** to wake after ~29 minutes, **111 s** after ~3.4 hours. Once awake, every
+> request is around **0.3 s**. If your first `curl` seems to hang, leave it running.
 >
 > **The public URL is the serving half of the system, not the whole of it.** The drift-detection
 > and retraining loop needs MLflow, Prefect and the dataset, so it runs locally and is shown in
@@ -234,7 +233,7 @@ arrives while there is still time to react.
 ## Design decisions
 
 Code shows you can execute; design decisions show you can *think*. This project keeps
-**[43 decision records](docs/decisions/)**, each written when the decision was made, with the
+**[44 decision records](docs/decisions/)**, each written when the decision was made, with the
 alternatives that were rejected and the measurements that settled it. A selection:
 
 **[PR-AUC, not ROC-AUC](docs/decisions/0001-business-metric.md).** Under 0.17% positives, ROC-AUC
@@ -435,7 +434,16 @@ Nine gated phases; each finished only when its "Definition of Done" passed befor
 | 6 | CI/CD (GitHub Actions) | ✅ Complete |
 | 7 | Orchestration (Prefect) | ✅ Complete |
 | 8 | Monitoring, drift & closed retraining loop (Evidently) | ✅ Complete |
-| 9 | Deployment, final README & demo | 🚧 API deployed; video and polish remain |
+| 9 | Deployment, final README & demo | ✅ Complete |
+
+**All nine phases are complete.** The system runs end to end: data versioned and validated,
+training tracked, models promoted through a quality gate, served over HTTP, containerised,
+shipped by CI/CD, orchestrated on a schedule, and monitored by a loop that has been observed
+retraining the model without a human in the path — with the API deployed and publicly reachable.
+
+What it is not: a system with real users, real labels, or a shared data remote. Those limits are
+stated plainly in [what I would do differently](#what-i-would-do-differently), and in the
+[decision records](docs/decisions/) that track every trade-off made along the way.
 
 ---
 
@@ -452,7 +460,7 @@ pipelines/      # Prefect orchestration flows (kept separate from src/)
 scripts/        # maintenance entry points (drift simulation, model export)
 tests/          # 83 tests: data, model, quality gate, api, pipelines, monitoring
 deploy/model/   # the exported model that ships inside the public image
-docs/decisions/ # 43 design-decision records (ADRs)
+docs/decisions/ # 44 design-decision records (ADRs)
 docker/         # Dockerfile (multi-stage), docker-compose.yml
 data/           # DVC-managed, never in Git
 ```
