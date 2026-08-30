@@ -1,45 +1,112 @@
 # Fraud MLOps Pipeline
 
-![CI](https://github.com/adrianmarchramon/fraud-mlops-pipeline/actions/workflows/ci.yml/badge.svg)
+[![CI](https://github.com/adrianmarchramon/fraud-mlops-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/adrianmarchramon/fraud-mlops-pipeline/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/live%20demo-online-brightgreen)](https://fraud-detection-api-unsm.onrender.com/docs)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue)](https://www.python.org/)
+[![Image](https://img.shields.io/badge/ghcr.io-published-informational)](https://github.com/adrianmarchramon/fraud-mlops-pipeline/pkgs/container/fraud-mlops-pipeline)
+[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
 
-**An end-to-end MLOps system for credit-card fraud detection that retrains itself when the world changes.**
+**An end-to-end MLOps system for credit-card fraud detection that notices when its own input data
+has drifted and retrains itself — with no human in the path.**
 
-This repository is not a model in a notebook — it is the *production system* around the model:
-versioned data, tracked training, a model registry, a typed inference API, containers, CI/CD,
-orchestration, and drift monitoring wired into a closed loop that **detects data drift and
-triggers automatic retraining**. The fraud model is deliberately the least important part; the
-engineering around it is the deliverable.
+This is not a model in a notebook. It is the *production system* around the model: versioned data,
+tracked training, a model registry with a promotion gate, a typed inference API, containers,
+CI/CD, orchestration, and drift monitoring wired into a closed loop. The fraud model is
+deliberately the least interesting part; the engineering around it is the deliverable.
 
-> **Project status:** 🟢 **Phases 0–8 complete** — foundations, a versioned and validated data
-> pipeline (DVC + Pandera), tracked training on top of it, models managed as production
-> artifacts rather than loose experiments (packaged with their preprocessor and decision
-> threshold, registered in the MLflow Model Registry, promoted to `@production` only when they
-> beat the model already there), **a typed REST API serving that model over HTTP** with
-> self-generated interactive docs, **the whole system packaged as containers** — API and
-> MLflow brought up together by a single `docker compose up`, so it behaves the same on any
-> machine — and **a CI/CD pipeline that verifies and ships itself**: a protected `main` that
-> refuses any change failing lint, types, tests or the model-quality gate, and a container
-> image built and published automatically on every merge, and **the pipeline orchestrated as
-> schedulable Prefect flows** — training chained end to end with per-stage retries, and a
-> scheduled monitoring flow that triggers retraining on its own — and, closing the circle,
-> **drift monitoring wired into a loop that has been observed running end to end**: shifted
-> traffic reaches the API, Evidently measures the shift against a versioned reference, an alert
-> fires, and a new model is trained and registered with no human in the path. Phase 9
-> (deployment and presentation) is what remains — see the [roadmap](#roadmap) below. This is a
-> living project, built in gated phases, not an abandoned prototype.
+**→ Try it live: [fraud-detection-api-unsm.onrender.com/docs](https://fraud-detection-api-unsm.onrender.com/docs)**
+
+<!-- Demo video goes here once recorded (Phase 9, Step 4): a 2-3 min clip of the drift loop. -->
+
+---
+
+## Contents
+
+[Try it in 30 seconds](#try-it-in-30-seconds) · [Why this project](#why-this-project) ·
+[Architecture](#architecture) · [Results](#results) ·
+[The closed loop](#the-closed-loop-drift--retrain) · [Design decisions](#design-decisions) ·
+[Run it yourself](#run-it-yourself) · [How it is deployed](#how-it-is-deployed) ·
+[What I would do differently](#what-i-would-do-differently) · [Roadmap](#roadmap)
+
+---
+
+## Try it in 30 seconds
+
+The API is live. This is a **known fraudulent transaction** from the dataset:
+
+```bash
+curl -X POST https://fraud-detection-api-unsm.onrender.com/predict \
+  -H "Content-Type: application/json" \
+  -d '{"Time": 406.0,"V1": -2.312227,"V2": 1.951992,"V3": -1.609851,"V4": 3.997906,"V5": -0.522188,"V6": -1.426545,"V7": -2.537387,"V8": 1.391657,"V9": -2.770089,"V10": -2.772272,"V11": 3.202033,"V12": -2.899907,"V13": -0.595222,"V14": -4.289254,"V15": 0.389724,"V16": -1.140747,"V17": -2.830056,"V18": -0.016822,"V19": 0.416956,"V20": 0.126911,"V21": 0.517232,"V22": -0.035049,"V23": -0.465211,"V24": 0.320198,"V25": 0.044519,"V26": 0.17784,"V27": 0.261145,"V28": -0.143276,"Amount": 0.0}'
+```
+
+```json
+{"fraud_probability": 0.9997079968452454, "is_fraud": 1, "model_version": "1"}
+```
+
+And a **legitimate** one — same endpoint, same model:
+
+```bash
+curl -X POST https://fraud-detection-api-unsm.onrender.com/predict \
+  -H "Content-Type: application/json" \
+  -d '{"Time": 0.0,"V1": -1.359807,"V2": -0.072781,"V3": 2.536347,"V4": 1.378155,"V5": -0.338321,"V6": 0.462388,"V7": 0.239599,"V8": 0.098698,"V9": 0.363787,"V10": 0.090794,"V11": -0.5516,"V12": -0.617801,"V13": -0.99139,"V14": -0.311169,"V15": 1.468177,"V16": -0.470401,"V17": 0.207971,"V18": 0.025791,"V19": 0.403993,"V20": 0.251412,"V21": -0.018307,"V22": 0.277838,"V23": -0.110474,"V24": 0.066928,"V25": 0.128539,"V26": -0.189115,"V27": 0.133558,"V28": -0.021053,"Amount": 149.62}'
+```
+
+```json
+{"fraud_probability": 0.000024124205083353445, "is_fraud": 0, "model_version": "1"}
+```
+
+Or open **[/docs](https://fraud-detection-api-unsm.onrender.com/docs)** and send one from the
+browser — the Swagger UI is generated from the Pydantic schemas, so it cannot drift from what the
+API actually accepts.
+
+> **Two honest notes.** It runs on a free tier, which Render documents as sleeping after 15
+> minutes without traffic and taking about a minute to wake. In practice it has not been observed
+> sleeping — measured once, the first request after a 17-minute idle window still returned in
+> **0.45 s**, most likely because the configured health check counts as traffic. Treat a slow
+> first response as possible rather than expected. And **the public URL is the serving half of the
+> system, not the whole of it** — the drift-detection and retraining loop needs MLflow, Prefect and
+> the dataset, so it runs locally and is shown in the demo video. The deployed API does not
+> retrain itself; the system does, where it can.
+
+---
+
+## Why this project
+
+Card fraud is a **needle-in-a-haystack** problem. In this dataset, **492 of 284,807 transactions
+are fraudulent — 0.17%**. That imbalance makes accuracy a trap: a model that flags *nothing* is
+99.83% accurate and completely worthless.
+
+What makes it a *business* problem rather than a statistics exercise is the **cost asymmetry**:
+
+- A **false negative** — fraud let through — is direct, usually unrecoverable financial loss.
+- A **false positive** — a real customer blocked — is friction, support cost and lost goodwill.
+
+A missed fraud costs roughly **34× a false alarm** under this project's cost model, so the system
+is tuned to **maximise recall while keeping precision usable**, measured with **PR-AUC** rather
+than the deceptively flattering ROC-AUC, and its decision threshold is chosen by **expected
+business cost** rather than left at a naïve 0.5.
+
+But the harder problem is the one that shows up three months later: a model that keeps returning
+`200 OK` and quietly stops catching fraud, because the world moved and nobody noticed. **That** is
+what this repository is actually about.
 
 ---
 
 ## Architecture
 
-The system runs on two clocks over the same infrastructure: a fast **prediction path**
-(validate → preprocess → predict → **log every prediction** → respond, in milliseconds) and a
-slow **model-lifecycle path** (logs analysed for drift → alert → automatic retrain → evaluate →
-promote, over days/weeks). The closed drift → retrain loop is the centrepiece.
-
 ![Architecture of the closed-loop fraud MLOps system](docs/images/architecture.png)
 
-The same flow as a quick textual reference:
+The system runs **two clocks on the same infrastructure**:
+
+- The **prediction path**, in milliseconds — validate → preprocess → predict → **log the
+  prediction** → respond.
+- The **model-lifecycle path**, over days — logs analysed for drift → alert → automatic retrain →
+  evaluate → promote only if better.
+
+Every prediction the API serves is appended to a JSONL log. That log is not an afterthought: it is
+the raw material the monitoring half consumes, and its format was frozen as a contract in Phase 4
+*specifically* so Phase 8 could read it.
 
 ```
  raw data ─▶ ingest + validate (DVC, Pandera) ─▶ preprocess ─▶ train (MLflow) ─▶ Model Registry
@@ -51,371 +118,301 @@ The same flow as a quick textual reference:
                     └────────── drift alert (Evidently) ◀── analyse prediction logs ◀───┘
 ```
 
----
+### The stack, and when each piece entered
 
-## The problem — and why it matters
-
-Card fraud is a **needle-in-a-haystack** problem: in this project's dataset, roughly **0.17% of
-transactions are fraudulent** (492 in 284,807). That extreme imbalance makes accuracy a trap — a
-model that flags *nothing* as fraud is still ~99.83% accurate and completely useless.
-
-What makes it a *business* problem, not just a statistics problem, is the **cost asymmetry**
-between the two ways of being wrong:
-
-- A **false negative** (fraud let through) is direct, often unrecoverable financial loss.
-- A **false positive** (a legitimate customer wrongly blocked) is friction, support cost, and
-  eroded goodwill.
-
-Because a missed fraud typically costs far more than a false alarm, the system is tuned to
-**prioritise recall while controlling precision**, and is measured with **PR-AUC** rather than
-the deceptively optimistic ROC-AUC. The decision threshold is treated as part of the model
-artifact, tuned to the business cost trade-off rather than left at a naïve 0.5.
-
-The full reasoning — metric choice, cost model, dataset limitations, and stack rationale — lives
-in the design-decision records: **[`docs/decisions/`](docs/decisions/)**.
-
----
-
-## Technology stack
-
-Chosen for a reproducible, production-shaped system at portfolio scale — no Kubernetes, no
-over-engineering. The **Phase** column shows when each tool enters the project; "✅ active" means
-it is already wired up in the repository today (through Phase 6).
-
-| Concern | Tool | Phase |
+| Concern | Tool | Since |
 |---|---|---|
-| Language | Python 3.12 | ✅ active |
-| Environment & dependencies | **uv** (single lockfile, no manual venvs) | ✅ active |
-| Lint **and** format | **ruff** (one tool — no black) | ✅ active |
-| Git hooks | **pre-commit** (ruff, whitespace, large-file guard) | ✅ active |
-| Testing | **pytest** | ✅ active |
-| Exploration | **pandas · seaborn · matplotlib · Jupyter** | ✅ active |
-| Data versioning | **DVC** (data never committed to Git) | ✅ active |
-| Data validation | **Pandera** (schema as a quality contract) | ✅ active |
-| Modelling | **scikit-learn / XGBoost** + **imbalanced-learn** | ✅ active |
-| Experiment tracking | **MLflow** (SQLite backend) | ✅ active |
-| Model Registry | **MLflow Model Registry** (versions + aliases) | ✅ active |
-| Inference API | **FastAPI** + **Pydantic** + **Uvicorn** | ✅ active |
-| Containerization | **Docker** (multi-stage, non-root) + Docker Compose | ✅ active |
-| CI/CD | **GitHub Actions** (incl. a model-validation gate) + **GHCR** | ✅ active |
-| Orchestration | **Prefect** (flows, retries, cron + event triggers) | ✅ active |
-| Monitoring & drift | **Evidently** (data drift, HTML reports, threshold alerts) | ✅ active |
-| Deployment | **Render / Railway / Fly.io / Modal** (lightweight) | Phase 9 |
+| Language · env · deps | Python 3.12, **uv** (one lockfile, no manual venvs) | Phase 0 |
+| Lint **and** format | **ruff** (one tool — no black) | Phase 0 |
+| Data versioning | **DVC** (data never enters Git) | Phase 1 |
+| Data validation | **Pandera** (schema as a quality contract) | Phase 1 |
+| Modelling | **scikit-learn / XGBoost** + imbalanced-learn | Phase 2 |
+| Tracking · Registry | **MLflow** (SQLite backend, versions + aliases) | Phases 2–3 |
+| Inference API | **FastAPI** + **Pydantic** + Uvicorn | Phase 4 |
+| Containers | **Docker** (multi-stage, non-root) + Compose | Phase 5 |
+| CI/CD | **GitHub Actions** + **GHCR**, incl. a model-quality gate | Phase 6 |
+| Orchestration | **Prefect** (flows, retries, cron, event triggers) | Phase 7 |
+| Monitoring & drift | **Evidently** (data drift, HTML reports, threshold alerts) | Phase 8 |
+| Deployment | **Render** (free tier, prebuilt image) | Phase 9 |
+
+No Kubernetes. That is a deliberate, defensible choice at this scale, not an omission — see
+[the design decisions](#design-decisions).
 
 ---
 
-## Getting started
+## Results
 
-**Prerequisites:** [`uv`](https://docs.astral.sh/uv/) installed. uv manages the Python
-interpreter (pinned to 3.12 in `.python-version`), the virtual environment, and all
-dependencies — you do not need to create or activate a venv yourself.
+The model is **XGBoost**, chosen on PR-AUC over a logistic-regression baseline (0.876 vs 0.725),
+with `scale_pos_weight` handling the imbalance and a decision threshold of **0.03** selected by
+minimising expected business cost.
+
+| Metric | Value |
+|---|---|
+| **PR-AUC** (primary) | **0.876** |
+| Recall | 0.888 |
+| Precision | 0.554 |
+| F1 | 0.682 |
+
+These come from [`reports/metrics.json`](reports/metrics.json), which is versioned in Git by DVC
+and **read by CI on every pull request** — a build fails if PR-AUC drops below the floor. The
+numbers in this table are therefore checked by machine, not copied by hand.
+
+**Read them in business terms.** At this operating point the system catches **89% of fraud** and
+about **45% of its alerts are false alarms**. That trade is deliberate: with a false negative
+costing ~34× a false positive, tolerating false alarms to catch more fraud is the cheaper
+mistake. At the naïve 0.5 threshold the same model would cost noticeably more.
+
+> The cost figures behind the threshold (€137 per missed fraud, €4 per false alarm) are
+> **illustrative, not measured business data**. The first is the dataset's mean fraud amount plus
+> a handling estimate; the second is the midpoint of a plausible range. Every decision resting on
+> them — the threshold above all — inherits that caveat. They live in
+> [`params.yaml`](params.yaml) as versioned parameters precisely so they can be replaced with real
+> numbers without touching a line of code.
+
+---
+
+## The closed loop (drift → retrain)
+
+This is the part that makes it a system rather than a deployment, and it has been **watched
+running end to end, twice**.
+
+A model does not fail loudly. It keeps answering, keeps returning probabilities, and quietly stops
+catching fraud as reality drifts away from what it learned. So the pipeline measures that drift
+directly:
+
+- One side is a **frozen reference** — 5,000 rows from the training split, in raw feature space,
+  built by its own DVC stage so the baseline has a hash and two runs a month apart are answering
+  the same question.
+- The other is **real traffic** — the prediction log the API has been appending to since Phase 4.
+- Evidently runs a per-column statistical test across all 30 features. When the share of drifted
+  columns reaches the threshold, an alert fires and the **training deployment is triggered**.
+
+Here is the loop actually firing, from the run recorded in
+[ADR 0041](docs/decisions/0041-phase-8-closure.md):
+
+```
+20:47:12  BEFORE   3 records in the log  ->  detect_drift() = False
+                   "below the 100-row minimum" — it declines to guess
+20:47:47  INJECT   300 shifted transactions POSTed to the live API   (300/300 accepted)
+                   Amount mean 2910.20 vs 87.86 reference | V1 mean 3.080 vs 0.010
+20:47:54  TRIGGER  monitoring flow runs
+20:48:02           Drift detected? True   (100% of columns drifted)
+20:48:02           DRIFT ALERT: Significant drift detected. Triggering retraining.
+20:48:02           training flow created — source=deployment
+20:48:11           validate -> 284,807 rows OK
+20:48:12           preprocess -> done
+20:48:19           train -> done
+20:48:20           register -> fraud-detector v8 created
+20:48:21           Completed
+```
+
+**Nobody touched anything between the first HTTP request and v8.** The `False` twenty seconds
+before the `True` matters as much as the `True` — it is the guard refusing to call drift on three
+rows, which is what shows the detection came from the injected batch rather than from a detector
+that reports drift on anything.
+
+And v8 was **not promoted**. Training is deterministic on unchanged data, so the new model tied
+the incumbent, and the promotion gate requires *strictly better* PR-AUC. **A gate that refuses an
+equal model is a gate that works** — seven registered versions now sit unpromoted for exactly this
+reason.
+
+Every check also writes an interactive **HTML report** to `reports/drift/drift_report.html`: one
+section per feature, reference and current distributions overlaid, per-column test results. It is
+the most legible artifact the project produces.
+
+**What this measures, and what it does not.** This is **data drift** — a change in the input
+distribution, P(X). It is deliberately *not* concept drift, a change in the relationship between
+features and outcome, because measuring that needs ground truth this system never receives: in
+fraud you learn a transaction was fraudulent days or weeks later, when the chargeback arrives.
+That **label delay** is precisely why input drift is worth acting on — it is the signal that
+arrives while there is still time to react.
+
+---
+
+## Design decisions
+
+Code shows you can execute; design decisions show you can *think*. This project keeps
+**[43 decision records](docs/decisions/)**, each written when the decision was made, with the
+alternatives that were rejected and the measurements that settled it. A selection:
+
+**[PR-AUC, not ROC-AUC](docs/decisions/0001-business-metric.md).** Under 0.17% positives, ROC-AUC
+is dominated by the true-negative mass and stays flatteringly high for a model that is barely
+working. Precision-recall says something about the minority class, which is the only class anyone
+cares about here.
+
+**[The threshold is part of the model, not the API](docs/decisions/0014-cost-optimal-threshold.md).**
+It is derived from expected business cost, versioned in `params.yaml`, and packaged *inside* the
+registered artifact. An API that hardcoded `0.5` would silently decouple the served decision from
+the one that was evaluated.
+
+**[Preprocessing ships with the model](docs/decisions/0015-packaged-model-contract.md).** The
+artifact is one `pyfunc` carrying the fitted preprocessor, the booster and the threshold, so the
+API feeds it *raw* transactions. This is the single most important defence against
+**training-serving skew** — the failure where the API reimplements feature engineering slightly
+differently from training, and nothing ever errors.
+
+**[Aliases, not stages](docs/decisions/0016-promotion-quality-gate.md).** Consumers ask for
+`@production`, never a version number. Promoting is one alias move, and the API serves the new
+model after a restart with no code change — and only if the candidate **beats** the incumbent on
+PR-AUC.
+
+**[Validate at every boundary, fail loudly](docs/decisions/0010-pandera-strict-lazy.md).** Pandera
+gates data into training; Pydantic gates requests into the API. Bad input produces a `422`, never
+a confident prediction on garbage.
+
+**[Log every prediction from day one](docs/decisions/0021-prediction-log-and-api-tests.md).** The
+record shape was frozen in Phase 4 as an explicit contract with a monitoring phase that did not
+exist yet. Phase 8 read it unchanged. Monitoring is not something you add later; it is something
+you leave room for.
+
+**[The CI gate tests the model, not just the code](docs/decisions/0028-model-quality-gate-threshold.md).**
+A green test suite says nothing about whether the model still works. A dedicated test reads the
+DVC-versioned PR-AUC and fails the build if it has degraded.
+
+**[The health check inspects the body, not the status code](docs/decisions/0022-container-image-contract.md).**
+`/health` returns `200` even with no model loaded — reporting the degraded state is its job — so
+`curl -f` would call a broken container healthy. This bit once, for real, and the fix is recorded.
+
+**[No Kubernetes](docs/decisions/0004-stack-summary.md).** One service with light traffic does not
+need an orchestrator; adding one would demonstrate tool familiarity and poor judgement
+simultaneously. A lightweight PaaS with a health check and rolling deploys is the right size.
+
+**[The public deployment bundles its model](docs/decisions/0042-bundled-model.md).** A free tier
+has no MLflow server to resolve an alias against, so the artifact ships inside the image, selected
+by one environment variable. Local and Compose runs are untouched and still resolve the alias —
+one variable, a working default, no second code path.
+
+---
+
+## Run it yourself
+
+**Prerequisites:** [`uv`](https://docs.astral.sh/uv/). It manages the interpreter, the virtualenv
+and every dependency — you never create or activate a venv yourself.
 
 ```bash
 git clone https://github.com/adrianmarchramon/fraud-mlops-pipeline.git
 cd fraud-mlops-pipeline
-make setup          # uv sync + install pre-commit hooks
+make setup            # uv sync + install pre-commit hooks
+make test             # 83 tests
 ```
 
-`make setup` is the single entry point: it resolves the exact dependency set from `uv.lock` and
-installs the git hooks. The rest of the interface is the Makefile:
+The Makefile is the interface:
 
 ```bash
-make lint           # ruff check
-make format         # ruff format
-make test           # pytest
-make train          # train the model, logging the run to MLflow
-make register       # register the best run, promote it if it beats production
-make serve          # run the FastAPI inference API on http://localhost:8000
+make lint / format    # ruff (linter AND formatter)
+make train            # train, logging the run to MLflow
+make register         # register the best run; promote it only if it beats production
+make serve            # FastAPI on http://localhost:8000
 ```
 
-### Inspecting the experiments
+### Getting the data
 
-Every training run — its parameters, metrics, confusion matrix and PR curve — is tracked in
-MLflow, backed by a local SQLite store. To browse the run history and compare experiments side
-by side:
+`make setup` prepares the environment but **not** the dataset — data never lives in Git. Fetch it
+from Kaggle and rebuild the whole versioned pipeline:
 
 ```bash
-uv run mlflow ui --backend-store-uri sqlite:///mlflow.db
+uv run kaggle datasets download -d mlg-ulb/creditcardfraud -p data/raw --unzip
+uv run dvc repro      # validate -> preprocess -> train -> reference
 ```
 
-Runs are best sorted by **PR-AUC**, the primary metric fixed in
-[`docs/decisions/0001-business-metric.md`](docs/decisions/0001-business-metric.md). The tracking
-store is local and git-ignored, so a fresh clone starts with an empty history until you run
-`make train` or `uv run dvc repro`.
+`dvc repro` re-runs only the stages whose dependencies actually changed, so editing a
+hyperparameter retrains the model without recomputing the data.
 
-### Using the production model
+> The configured DVC remote is a **local** store on the author's machine
+> ([why](docs/decisions/0005-dvc-local-remote.md)), so `dvc pull` will not work from a fresh clone
+> elsewhere — rebuild from Kaggle as above.
 
-`make register` takes the best run in the experiment, packages it with the fitted preprocessor
-and the versioned decision threshold into a single artifact that accepts **raw** transactions,
-registers it as a new version of `fraud-detector`, and moves the `@production` alias to it —
-but only if its PR-AUC beats the version already holding that alias. An inferior model is
-registered and left unpromoted rather than silently shipped.
-
-Consumers never name a version. They ask for the role:
-
-```python
-from src.models.register import load_production_model
-
-model = load_production_model()          # models:/fraud-detector@production
-predictions = model.predict(raw_transactions)   # fraud_probability + is_fraud
-```
-
-Because preprocessing and the threshold travel inside the artifact, the caller feeds raw
-transactions straight in — no reimplemented feature engineering, and therefore no
-*training-serving skew*. Promoting a new version changes what that call returns without
-changing a line of the code that makes it, which is exactly what the inference API relies on.
-
-### Serving the model over HTTP
-
-```bash
-make serve          # uvicorn on http://localhost:8000
-```
-
-The API loads the `@production` model **once at startup** and holds it in memory, so it never
-names a version: promote a new one in the Registry, restart the service, and it serves the new
-model with no code change. Three endpoints:
-
-| Endpoint | Purpose |
-|---|---|
-| `POST /predict` | score one raw transaction |
-| `GET /health` | liveness + whether a model is loaded (used by the container health check) |
-| `GET /model-info` | which registered model, version and alias are being served |
-
-Open **<http://localhost:8000/docs>** and the interactive Swagger UI lets you send a transaction
-and read the prediction straight from the browser — no client code. (A reference-style view
-lives at `/redoc`.) Both are generated from the Pydantic schemas, so the documentation cannot
-drift from what the API actually accepts.
-
-A request carries the 30 raw dataset columns — `Time`, `Amount` and the anonymised PCA
-components `V1`…`V28`, all required:
-
-```bash
-curl -X POST http://localhost:8000/predict \
-  -H "Content-Type: application/json" \
-  -d '{"Time": 0.0, "Amount": 149.62, "V1": -1.359807, "V2": -0.072781, ..., "V28": -0.021053}'
-```
-
-```json
-{"fraud_probability": 0.000042796866182470694, "is_fraud": 0, "model_version": "1"}
-```
-
-Values are illustrative: `model_version` reports whichever version currently holds
-`@production`, so it changes as models are promoted.
-
-The response carries the probability alongside the decision: the label drives the action, the
-probability supports triage and auditing. Anything malformed — a missing field, a negative
-`Amount`, a string where a number belongs — is rejected with a **422** by Pydantic before it
-reaches the model.
-
-Every served prediction is appended to `logs/predictions.jsonl` (input, output and a UTC
-timestamp, one JSON object per line). That file is git-ignored runtime output, and it is the
-raw material Phase 8 consumes to detect drift.
-
-### Running the whole system in containers
-
-From Phase 5 the API and MLflow run as containers, so the system behaves identically on any
-machine that has Docker — no Python, no uv, no local dependency set:
+### The whole system in containers
 
 ```bash
 docker compose -f docker/docker-compose.yml up
 ```
 
-That brings up two services on an internal Compose network:
-
-| Service | Address | What it is |
-|---|---|---|
-| `api` | <http://localhost:8000> | the FastAPI inference service — `/docs` for the Swagger UI |
-| `mlflow` | <http://localhost:5000> | the tracking server and Model Registry |
-
-The API locates the registry by **service name** (`http://mlflow:5000`), resolved by Compose's
-internal DNS — no IP address is hardcoded anywhere — and waits for MLflow to report *healthy*
-before starting, because it resolves the `@production` alias once at startup and never retries.
-Registered models live in a named Docker volume, so they outlive the containers and survive
-`docker compose down`.
-
-The image itself is multi-stage: dependencies resolve in a builder stage that never reaches the
-final image, which runs as a non-root user and carries a health check that inspects the
-*response body* of `/health` — `/health` returns `200` even with no model loaded, so checking
-only the status code would report a container that never reached MLflow as healthy.
-
-Once it is up, the API is used exactly as in the previous section:
-
-```bash
-curl http://localhost:8000/health          # {"status":"ok"}
-curl http://localhost:8000/model-info      # {"model_name":"fraud-detector","version":"1","alias":"production"}
-```
-
-> **One-time bootstrap.** The registry volume starts **empty** on a fresh clone, so the first
-> `docker compose up` gives you a healthy MLflow and an API honestly reporting
-> `{"status":"no_model"}`. Seeding it is the one step that still needs Python, because the model
-> is deliberately *not* baked into the image — that is what lets the same image serve whatever
-> version currently holds `@production`:
->
-> ```bash
-> docker compose -f docker/docker-compose.yml up -d mlflow
-> MLFLOW_TRACKING_URI=http://localhost:5000 make train
-> MLFLOW_TRACKING_URI=http://localhost:5000 make register
-> docker compose -f docker/docker-compose.yml up -d
-> ```
->
-> The same `train.py` and `register.py` populate either registry without a line changing — only
-> the environment variable differs. After this, the volume keeps the model and a plain
-> `docker compose up` is all that is needed. The reasoning is in
-> [`docs/decisions/0025-phase-5-reproducibility-and-key-test-scope.md`](docs/decisions/0025-phase-5-reproducibility-and-key-test-scope.md).
-
-### How changes reach production
-
-Two workflows, deliberately split, because verifying a proposal and shipping an approved change
-are different problems.
-
-**[`ci.yml`](.github/workflows/ci.yml)** runs on every pull request and on pushes to `main`:
-`uv sync --locked --dev` (which fails loudly if `uv.lock` has drifted from `pyproject.toml`),
-then `ruff check`, `ruff format --check`, `mypy --strict`, and the full `pytest` suite — cheapest
-check first. That suite includes
-[`tests/test_model_quality.py`](tests/test_model_quality.py), the **model-validation gate**: it
-reads the PR-AUC that DVC versions in Git and fails the build if the model has degraded. Passing
-code tests says nothing about whether the model still works, and this is the check that closes
-that gap.
-
-`main` is protected: a pull request cannot be merged until that job is green. **[`cd.yml`](.github/workflows/cd.yml)**
-then triggers only on pushes to `main` — that is, only on merges — and builds
-[`docker/Dockerfile`](docker/Dockerfile) unchanged, publishing it to GHCR. It repeats none of the
-CI checks, because branch protection guarantees they already passed on that exact commit.
-
-The published image is public, so it can be pulled without credentials:
+Brings up the API (`:8000`) and MLflow (`:5000`) on one network, the API finding the registry by
+service name. Registered models live in a named volume and survive `docker compose down`. The
+published image can also be pulled directly:
 
 ```bash
 docker pull ghcr.io/adrianmarchramon/fraud-mlops-pipeline:latest
 ```
 
-Tagged `latest`, `main`, and `sha-<commit>` — the last being an immutable handle for pinning a
-specific build.
+### Watching the loop run
 
-### Getting the data
-
-`make setup` prepares the *environment* but does **not** fetch the dataset — data is never
-stored in Git. From Phase 1 the data is **DVC-managed**: `data/raw/creditcard.csv` and the
-processed artifacts are tracked by DVC, with only the lightweight `.dvc` / `dvc.lock` pointers
-committed to Git.
-
-If you have access to the configured DVC remote, pull the tracked data — raw CSV, processed
-`train`/`test` parquet, and the fitted `preprocessor.joblib` — in one step:
-
-```bash
-uv run dvc pull
-```
-
-> **Note:** the default DVC remote is currently a **local** store on the author's machine — a
-> deliberate Phase 1 choice (see
-> [`docs/decisions/0005-dvc-local-remote.md`](docs/decisions/0005-dvc-local-remote.md)). A clone
-> on a different machine therefore cannot `dvc pull` until a shared/cloud remote is configured.
-
-To reproduce the pipeline from scratch on any machine, fetch the raw CSV from
-[Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) (with configured Kaggle API
-credentials) and rebuild the versioned pipeline:
-
-```bash
-uv run kaggle datasets download -d mlg-ulb/creditcardfraud -p data/raw --unzip
-uv run dvc repro
-```
-
-This places `creditcard.csv` in `data/raw/`, runs the versioned pipeline
-(validate → preprocess → train), regenerates `data/processed/{train,test}.parquet` and
-`preprocessor.joblib`, trains the model, and writes `reports/metrics.json`. Since Phase 2 the
-pipeline reaches all the way to the model: `dvc repro` re-runs only the stages whose
-dependencies actually changed, so editing a hyperparameter in `params.yaml` retrains the model
-without recomputing the data. The exploration notebook `notebooks/01_exploration.ipynb` also
-runs end to end once the raw CSV is present.
-
-### Orchestrating the pipeline
-
-`dvc repro` answers *what* ran and with what result. Prefect answers *when* it runs and how
-reliably — schedule, retries, observability, event triggers. The two are complementary layers,
-and both stay.
-
-Start the server and the deployments in two terminals:
+Four terminals, and you can watch a model retrain itself:
 
 ```bash
 make prefect-server   # dashboard on http://localhost:4200
 make prefect-serve    # serves both deployments; leave running
+make serve            # the API
+make simulate-drift   # POST 300 deliberately shifted transactions
+make prefect-monitor  # run the drift check now instead of waiting for 06:00
 ```
 
-Then run the training pipeline and watch each stage execute in the dashboard:
-
-```bash
-make prefect-train    # validate -> preprocess -> train -> register
-```
-
-Two flows are deployed:
-
-| Deployment | Trigger | What it does |
-|---|---|---|
-| `training-pipeline/on-demand` | manual, or by event | Chains validate → preprocess → train → register, each stage retrying on its own |
-| `monitoring-pipeline/daily` | cron `0 6 * * *` | Checks for drift and fires the training deployment if it finds any |
-
-Retries are calibrated per stage rather than set globally: validation is cheap and fails for
-transient reasons, so it retries three times; training costs minutes and usually fails
-deterministically, so it retries twice with a longer pause. A stage that exhausts its retries
-fails the flow, and validation runs first precisely so bad data stops the run before anything
-trains on it.
-
-> **The loop is armed, and it has been watched running.** Phase 7 built this wiring around a
-> placeholder predicate; Phase 8 replaced it with real detection and changed nothing else. The
-> whole chain has been observed end to end twice: 300 transactions with a deliberately shifted
-> distribution were posted to the live API, which scored and logged them like any other traffic;
-> the scheduled monitoring flow read that log, measured **100% of columns drifted** against the
-> versioned reference, raised the alert, and fired the training deployment; four stages later a
-> new model version existed in the Registry. Nobody touched anything between the first request
-> and the new version.
+The monitoring flow reads the log, measures the shift, fires the alert, and triggers the training
+deployment. Watch it in the Prefect dashboard; read
+`reports/drift/drift_report.html` afterwards.
 
 ---
 
-### Watching the model for drift
+## How it is deployed
 
-A model does not fail loudly. It keeps answering `200`, keeps returning probabilities, and
-quietly stops catching fraud as the world moves away from what it learned. Detecting that is
-what turns this repository from a deployment into a system that maintains itself.
+Two workflows, deliberately split. **[`ci.yml`](.github/workflows/ci.yml)** runs on every pull
+request: `uv sync --locked` (which fails if the lockfile drifted), `ruff check`,
+`ruff format --check`, `mypy --strict`, then the full suite including the model-quality gate.
+`main` is protected — a PR cannot merge until that job is green.
+**[`cd.yml`](.github/workflows/cd.yml)** then fires only on merges, building the image and
+publishing it to GHCR tagged `latest`, `main`, and `sha-<commit>`.
 
-**What is compared.** One side is a **frozen reference**: 5,000 rows drawn from the training
-split in raw feature space, built by a dedicated DVC stage so the baseline has a hash and two
-runs a month apart answer the same question. The other is **real production traffic** — the
-prediction log the API has been appending to since Phase 4. Evidently runs a per-column
-statistical test across all 30 features and reports the share that drifted; the loop fires when
-that share reaches `DRIFT_THRESHOLD`.
+The public service deploys **that exact image**, pinned by its immutable `sha-` tag in
+[`render.yaml`](render.yaml) — build once, deploy anywhere, and always able to say which build is
+live. Because a free tier has no MLflow to query, the API loads a model bundled in the image,
+selected by `MODEL_PATH`; everything else keeps resolving the `@production` alias.
 
-```bash
-uv run dvc repro reference   # build the frozen baseline (once)
-make simulate-drift          # post 300 deliberately shifted transactions to the API
-make prefect-monitor         # run the drift check now instead of waiting for 06:00
-```
+---
 
-Every check writes an **interactive HTML report** to `reports/drift/drift_report.html` — a
-per-feature view with the reference and current distributions overlaid, each column's test
-result, and the drifted summary. It is the most legible artifact this project produces: the
-shift is visible at a glance, without reading a line of code.
+## What I would do differently
 
-**What this measures, and what it does not.** This is **data drift** — a change in the input
-distribution, P(X). It is deliberately not *concept drift*, a change in the relationship between
-features and the outcome, because measuring that needs ground truth this system never receives:
-in fraud you learn a transaction was fraudulent days or weeks later, when the chargeback arrives.
-That **label delay** is exactly why input drift is worth acting on — it is the signal that
-arrives while there is still time to react.
+The honest list, and most of it is already written down in the decision records.
 
-**A guard against crying wolf.** Below `DRIFT_MIN_ROWS` records the check declines to answer
-rather than guess, and says so in the log. This is not defensive padding: Evidently on a 3-row
-window reports every column drifted, so without the floor the first scheduled run would retrain
-on noise.
+**The DVC remote is local**, which means this repository is reproducible on my machine and not on
+yours. It was the right call for a solo project with a 150 MB dataset and no cloud budget, and it
+is the first thing I would change with a bucket available.
+
+**Drift detection is only half of monitoring.** The system measures input drift because that is
+the signal it can actually get. Real fraud systems eventually receive labels via chargebacks, and
+the natural next step is a delayed-label pipeline that measures *performance* decay rather than
+inferring it from input distributions.
+
+**The retrained model has never been promoted**, because retraining on unchanged data
+deterministically ties the incumbent. The loop is proven; what it has not yet demonstrated is a
+promotion driven by genuinely new data. That needs a data source that actually moves.
+
+**The alert's webhook path has never reached a real endpoint.** Logging always works and is
+tested; the Slack/Discord POST has only ever been exercised against an unreachable address to
+verify the failure path. It is honest to call that unproven.
+
+**The measured drift share never reaches the Prefect dashboard.** It is logged at INFO on a module
+logger under a root logger left at WARNING, so the dashboard shows the verdict but not the number
+behind it. A logging-configuration fix, deliberately not made during a phase closure.
+
+**The public demo's model is frozen at build time.** Promoting a new version does not change what
+the deployed URL serves until the artifact is re-exported and redeployed. That is the price of
+having no registry in production, and it is why the *system's* architecture keeps the alias
+indirection that the *demo* gives up.
+
+**The image ships 400 MB it never uses** — `nvidia-nccl-cu12`, a transitive dependency of XGBoost,
+in a CPU-only container. Trimming it means constraining resolution in a way that also affects
+training, so it stayed a known cost rather than a rushed fix.
 
 ---
 
 ## Roadmap
 
-The project is built in nine gated phases; each is finished only when its "Definition of Done"
-passes before the next begins.
+Nine gated phases; each finished only when its "Definition of Done" passed before the next began.
 
 | Phase | Milestone | Status |
 |---|---|---|
-| 0 | Repo, environment, data understanding & decision log | ✅ Complete |
+| 0 | Repo, environment, data understanding, decision log | ✅ Complete |
 | 1 | Versioned data pipeline (DVC + Pandera) | ✅ Complete |
 | 2 | Training + experiment tracking (MLflow) | ✅ Complete |
 | 3 | Model Registry & packaging | ✅ Complete |
@@ -424,7 +421,7 @@ passes before the next begins.
 | 6 | CI/CD (GitHub Actions) | ✅ Complete |
 | 7 | Orchestration (Prefect) | ✅ Complete |
 | 8 | Monitoring, drift & closed retraining loop (Evidently) | ✅ Complete |
-| 9 | Deployment, final README & demo | ⏳ Planned |
+| 9 | Deployment, final README & demo | 🚧 API deployed; video and polish remain |
 
 ---
 
@@ -435,14 +432,15 @@ src/            # all production code, as an importable package
   data/         # ingest, validate (Pandera), preprocess
   models/       # train, evaluate, register (MLflow)
   api/          # FastAPI app, Pydantic schemas, prediction logic
-  monitoring/   # drift detection (Evidently), reference builder, HTML report
-  config.py     # centralized configuration
+  monitoring/   # drift detection (Evidently), reference builder
+  config.py     # centralized configuration — nothing hardcoded elsewhere
 pipelines/      # Prefect orchestration flows (kept separate from src/)
-tests/          # test_data, test_model, test_api
-notebooks/      # exploration only — never production code
-docs/decisions/ # design-decision records (ADRs)
-docker/         # Dockerfile, docker-compose
-data/           # DVC-managed, not in Git
+scripts/        # maintenance entry points (drift simulation, model export)
+tests/          # 83 tests: data, model, quality gate, api, pipelines, monitoring
+deploy/model/   # the exported model that ships inside the public image
+docs/decisions/ # 43 design-decision records (ADRs)
+docker/         # Dockerfile (multi-stage), docker-compose.yml
+data/           # DVC-managed, never in Git
 ```
 
 ---
