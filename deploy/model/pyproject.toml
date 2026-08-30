@@ -1,0 +1,53 @@
+[project]
+name = "fraud-mlops-pipeline"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "imbalanced-learn>=0.14.2",
+    "joblib>=1.5.3",
+    "matplotlib>=3.11.0",
+    "mlflow>=3",
+    "pandas>=2.2,<3",
+    "pandera>=0.32.1",
+    "pyarrow>=18,<25",
+    "pyyaml>=6.0.3",
+    "scikit-learn>=1.9.0",
+    "seaborn>=0.13.2",
+    "xgboost>=3.3.0",
+]
+
+[dependency-groups]
+dev = [
+    "dvc>=3.67.1",
+    "jupyter>=1.1.1",
+    "kaggle>=2.2.3",
+    "mypy>=2.2.0",
+    "pre-commit>=4.6.0",
+    "pytest>=9.1.1",
+    "ruff>=0.15.20",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+extend-exclude = ["*.ipynb"]  # notebooks are exploration-only, not production code
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "D", "S"]
+ignore = [
+    "D401",  # imperative-mood first line — too strict for our docstring style
+    "N803",  # allow ML argument naming (e.g. X)
+    "N806",  # allow ML local-variable naming (e.g. X_train) — sklearn convention
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "S101"]  # tests: names self-document; assert is the pytest idiom
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

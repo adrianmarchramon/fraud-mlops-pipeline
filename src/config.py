@@ -105,3 +105,31 @@ DRIFT_REPORT_PATH = Path(
 # src.monitoring.drift.DRIFT_WEBHOOK_URL, not this module
 # (docs/decisions/0021-prediction-log-and-api-tests.md hit the same edge).
 DRIFT_WEBHOOK_URL = os.getenv("DRIFT_WEBHOOK_URL", "")
+
+# ---------------------------------------------------------------------------
+# Public deployment (Phase 9)
+# ---------------------------------------------------------------------------
+# Where scripts/export_model.py writes the @production artifact so it can ride
+# inside the container image. It is a real directory in Git, not a build-time
+# download, because the deployed image is the one cd.yml publishes from a
+# GitHub runner — and that runner has neither the dataset (the DVC remote is
+# local, docs/decisions/0005-dvc-local-remote.md) nor a Model Registry to
+# resolve an alias against.
+DEPLOY_MODEL_DIR = PROJECT_ROOT / "deploy" / "model"
+
+# When set, the API loads the model from this directory instead of resolving
+# the @production alias against a Model Registry. Empty by default, and that
+# default is the whole point: with the variable unset every existing workflow
+# behaves exactly as it did in Phases 4-8 — `make serve` and `docker compose
+# up` still resolve the alias, so promoting a version still changes what they
+# serve without a rebuild.
+#
+# It is set only on the public deployment, where no MLflow server exists to
+# ask. That is the same posture MLFLOW_TRACKING_URI takes above and the
+# precedent 0024-environment-based-tracking-uri.md set: one variable, a working
+# local default, no second code path for anyone to keep in sync.
+#
+# The cost is real and is recorded in 0042: a bundled model is frozen at build
+# time, so the public service keeps serving whatever was exported until someone
+# re-exports and redeploys. Acceptable for a demo, never for the system itself.
+MODEL_PATH = os.getenv("MODEL_PATH", "")

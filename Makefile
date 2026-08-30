@@ -1,4 +1,4 @@
-.PHONY: setup lint format test train register serve prefect-server prefect-serve prefect-train prefect-monitor simulate-drift clean
+.PHONY: setup lint format test train register serve prefect-server prefect-serve prefect-train prefect-monitor simulate-drift export-model clean
 
 setup:        ## Install dependencies and configure pre-commit
 	uv sync
@@ -46,6 +46,13 @@ prefect-monitor: ## Trigger the monitoring deployment now instead of waiting for
 
 simulate-drift: ## Send a deliberately shifted batch to the running API (Phase 8, Step 7)
 	uv run python -m scripts.simulate_drift
+
+# Refreshes the copy of the model that ships inside the public image. Needed
+# after any promotion that should reach the public demo: the bundled artifact
+# is frozen at build time, so a promotion alone changes nothing there until the
+# export is re-run, committed and redeployed (docs/decisions/0042-bundled-model.md).
+export-model: ## Export the @production model into deploy/ for the public image (Phase 9)
+	uv run python -m scripts.export_model
 
 clean:        ## Clean caches
 	rm -rf __pycache__ .pytest_cache .ruff_cache
