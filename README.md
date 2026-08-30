@@ -19,6 +19,9 @@ deliberately the least interesting part; the engineering around it is the delive
 **→ [▶ Watch the 20-second introduction](docs/videos/intro.mp4)** — what the system is,
 at a glance. The loop it describes is walked through in full [further down](#the-closed-loop-drift--retrain).
 
+**→ [📄 Read the technical white paper](docs/whitepaper.pdf)** (34 pages) — the full build, phase by
+phase, with the design decisions, the measured results, and a section on everything that went wrong.
+
 ---
 
 ## Contents
@@ -461,6 +464,7 @@ scripts/        # maintenance entry points (drift simulation, model export)
 tests/          # 83 tests: data, model, quality gate, api, pipelines, monitoring
 deploy/model/   # the exported model that ships inside the public image
 docs/decisions/ # 44 design-decision records (ADRs)
+docs/whitepaper.pdf  # 34-page technical white paper
 docker/         # Dockerfile (multi-stage), docker-compose.yml
 data/           # DVC-managed, never in Git
 ```
