@@ -19,5 +19,10 @@ repos:
       - id: end-of-file-fixer
         exclude: ^deploy/model/
       - id: check-yaml
+      # The 1 MB ceiling is the guard that keeps datasets out of Git, so it is
+      # not raised. docs/videos/ is excluded by path instead: the demo video is
+      # a deliberate, reviewed 3.4 MB binary, and widening the limit for
+      # everything would silently permit the next one nobody looked at.
       - id: check-added-large-files
         args: [--maxkb=1024]  # EDA notebook is committed with plot outputs (~540 KB)
+        exclude: ^docs/videos/
