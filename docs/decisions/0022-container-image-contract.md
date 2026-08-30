@@ -97,3 +97,7 @@ it by design, and every prediction was dropped with a `WARNING` while `/predict`
   failure mode is silent by design, since the application swallows `OSError` on the log path.
 - **Dependency changes invalidate the expensive layer.** That is the correct trade: source edits
   stay cheap, dependency edits pay the full resolve.
+- **The "model is not baked in" rule held until Phase 9, and now holds with one exception.**
+  [0042](0042-bundled-model.md) ships an exported copy of the `@production` artifact inside the
+  image for the public deployment, which has no Registry to resolve an alias against. Compose
+  and local runs are unaffected: the copy is inert unless `MODEL_PATH` is set.

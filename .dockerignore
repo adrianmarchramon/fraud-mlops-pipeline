@@ -3,7 +3,14 @@
 # ship ~2 GB to the daemon — .venv alone is 1.7 GB and data/ is 219 MB.
 #
 # Posture: exclude everything the running API does not need. What survives is
-# src/, pyproject.toml, uv.lock, README.md and LICENSE.
+# src/, deploy/model/, pyproject.toml, uv.lock, README.md and LICENSE.
+#
+# deploy/model/ is NOT excluded, and that is deliberate: it is the exported
+# artifact the public deployment loads when MODEL_PATH is set
+# (docs/decisions/0042-bundled-model.md). It is ~1.4 MB against a 0.77 GB image
+# and is never read unless that variable is set, so it costs the Compose path
+# nothing. Note this is a different thing from the mlruns/ exclusion below:
+# that keeps the local REGISTRY out; this ships one frozen model.
 
 # --- Environments and caches (rebuilt inside the image) ---
 .venv

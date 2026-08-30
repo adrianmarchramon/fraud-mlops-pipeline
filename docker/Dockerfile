@@ -2,10 +2,17 @@
 #
 # Multi-stage image for the inference API (Phase 5).
 #
-# The model is deliberately NOT baked in. It is pulled at runtime from the
-# MLflow service through the @production alias, so this same image serves
-# whatever version currently holds that alias — promoting a model needs no
-# rebuild (docs/decisions/0015-packaged-model-contract.md).
+# The model is pulled at runtime from the MLflow service through the
+# @production alias, so this same image serves whatever version currently holds
+# that alias — promoting a model needs no rebuild
+# (docs/decisions/0015-packaged-model-contract.md). That remains the behaviour
+# everywhere this image is run against a Registry, Compose included.
+#
+# Phase 9 adds one exception without changing any of the above. `COPY . /app`
+# now also carries deploy/model/, an exported copy of the @production artifact
+# (~1.4 MB), because the public free-tier deployment has no MLflow to ask. It
+# is inert unless MODEL_PATH is set, which happens only there
+# (docs/decisions/0042-bundled-model.md).
 #
 # Python is pinned to 3.12 to match .python-version, requires-python and ruff's
 # target-version. The reference material shows 3.11; on 3.11 `uv sync --frozen`
