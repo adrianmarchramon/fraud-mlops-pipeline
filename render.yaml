@@ -1,0 +1,70 @@
+# Render Blueprint for the public inference API (Phase 9, Step 1).
+#
+# This deploys the image .github/workflows/cd.yml already built and published
+# to GHCR — it does NOT build anything. That is the whole point: the artifact
+# that serves the public demo is bit-for-bit the one CI verified and shipped,
+# so "build once, deploy anywhere" is a property of this project rather than a
+# slogan in its README. The reference material's example builds from
+# docker/Dockerfile on Render's own infrastructure, which would have produced a
+# second, unverified image from the same source.
+#
+# Only the API is deployed. MLflow, Prefect, the monitoring flow and the
+# retraining loop stay on the machine where they can actually run: they are
+# long-running services with state, and a free tier is the wrong place for
+# them. The public URL proves the API is real; the demo video proves the system
+# is. See docs/decisions/0043-render-deployment.md.
+
+services:
+  - type: web
+    name: fraud-detection-api
+
+    # Pull a prebuilt image; do not build from source.
+    runtime: image
+    image:
+      # PINNED TO AN IMMUTABLE DIGEST TAG, never `latest` or `main`, both of
+      # which move on every merge — docs/decisions/0029-cd-workflow-and-ghcr-publication.md
+      # called this out as a Phase 9 requirement precisely so the deployed
+      # build is always identifiable after the fact.
+      #
+      # Replace with the sha- tag CD publishes for the commit that merges this
+      # file. It cannot be filled in beforehand: that commit does not exist
+      # yet, and any earlier sha names an image built before deploy/model/
+      # existed, which would start and serve 503s. Left deliberately invalid so
+      # applying this blueprint unpinned fails loudly at the registry instead
+      # of quietly deploying a mutable tag.
+      url: ghcr.io/adrianmarchramon/fraud-mlops-pipeline:sha-REPLACE_WITH_MERGE_COMMIT_SHA
+      # `creds:` is not needed — the GHCR package is public (verified by an
+      # anonymous pull token). Adding a private registry credential here would
+      # be the only change required if that ever stopped being true.
+
+    plan: free
+
+    # Render's default region is Oregon. Add `region: frankfurt` if the demo is
+    # mostly viewed from Europe; it costs nothing but a redeploy.
+
+    # NOT /health, and the distinction is the same one
+    # docs/decisions/0022-container-image-contract.md made about the Docker
+    # HEALTHCHECK. /health answers 200 even with no model loaded — reporting
+    # the degraded state in the body is its job — so a platform that inspects
+    # only the status code would call a modelless container healthy. The
+    # Dockerfile solves that by grepping the body; Render cannot, so the health
+    # check points at the endpoint whose STATUS CODE already carries the
+    # answer: /model-info returns 503 until a model is actually loaded.
+    healthCheckPath: /model-info
+
+    envVars:
+      # The switch that makes this deployment possible: with it set, the API
+      # loads the artifact committed under deploy/model/ and never contacts a
+      # Model Registry — there is none here. Unset everywhere else, so every
+      # local and Compose workflow keeps resolving the @production alias
+      # (src/config.py, docs/decisions/0042-bundled-model.md).
+      # /app is the image's WORKDIR, and COPY . /app carries deploy/ into it.
+      - key: MODEL_PATH
+        value: /app/deploy/model
+
+      # Render routes to $PORT, which defaults to 10000, while the image's CMD
+      # binds 8000. Telling Render the port is preferred over overriding the
+      # container command with `dockerCommand`, which would mean the deployed
+      # process is no longer the one docker/Dockerfile declares and CI tested.
+      - key: PORT
+        value: 8000
