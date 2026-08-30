@@ -62,10 +62,13 @@ AMOUNT_MAX = 5_000.0
 # was originally chosen to leave one column undrifted. Measured, it does not:
 # both live runs reported a share of 1.0000, all 30 columns, Time included.
 # The reasoning behind the original choice was wrong in a way worth keeping
-# written down -- a K-S test compares distributional SHAPE, not range or mean,
-# and the real Time column is bimodal (two days of transaction cycles) while a
-# uniform draw is flat. Matching a mean does not make a distribution the same
-# distribution. See docs/decisions/0041-phase-8-closure.md.
+# written down -- the drift test compares whole DISTRIBUTIONS, not range or
+# mean, and the real Time column is bimodal (two days of transaction cycles)
+# while a uniform draw is flat. Matching a mean does not make a distribution
+# the same distribution. (The test Evidently actually applied was the normed
+# Wasserstein distance, not K-S as earlier comments claimed -- see
+# docs/decisions/0038-evidently-dependency-and-api.md.) See also
+# docs/decisions/0041-phase-8-closure.md.
 TIME_MIN = 0.0
 TIME_MAX = 200_000.0
 

@@ -208,9 +208,17 @@ def _drifted_share(reference: pd.DataFrame, current: pd.DataFrame) -> float:
     """Run the Evidently comparison and return the share of drifted columns.
 
     Evidently picks the statistical test per column from its type and sample
-    size — K-S on these 30 numerical features — and aggregates the per-column
-    verdicts into one share. Only that aggregate is read here; the threshold
-    applied to it is this project's policy, not Evidently's.
+    size, and which one it picks was measured rather than assumed: above 1000
+    reference rows it uses the normed Wasserstein distance at threshold 0.1,
+    and at or below 1000 rows the K-S p-value at 0.05. The `reference` DVC
+    stage builds 5000 rows, so production runs Wasserstein, while the
+    synthetic 500-row frames in tests/test_monitoring.py run K-S — the tests
+    therefore exercise the extraction and policy layers under a different
+    per-column test than production uses. See
+    docs/decisions/0038-evidently-dependency-and-api.md.
+
+    Either way only the aggregate is read here, and the threshold applied to
+    it is this project's policy, not Evidently's.
 
     Args:
         reference: the fixed baseline distribution.
