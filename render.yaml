@@ -32,7 +32,7 @@ services:
       # existed, which would start and serve 503s. Left deliberately invalid so
       # applying this blueprint unpinned fails loudly at the registry instead
       # of quietly deploying a mutable tag.
-      url: ghcr.io/adrianmarchramon/fraud-mlops-pipeline:sha-REPLACE_WITH_MERGE_COMMIT_SHA
+      url: ghcr.io/adrianmarchramon/fraud-mlops-pipeline:sha-6df9d1545bcc86f75b74c744d8403eebad808fe7
       # `creds:` is not needed — the GHCR package is public (verified by an
       # anonymous pull token). Adding a private registry credential here would
       # be the only change required if that ever stopped being true.
