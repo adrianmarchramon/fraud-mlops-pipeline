@@ -41,7 +41,12 @@ dev = [
 [tool.ruff]
 line-length = 88
 target-version = "py312"
-extend-exclude = ["*.ipynb"]  # notebooks are exploration-only, not production code
+# deploy/ holds the exported model artifact (Phase 9). It carries MLflow's own
+# snapshot copy of src/, which is part of the frozen model, not of the working
+# tree: reformatting it would change the artifact CI verified and the image
+# ships. Ruff must not read or rewrite it — and left included, it also drops a
+# .ruff_cache inside the bundle.
+extend-exclude = ["*.ipynb", "deploy"]  # notebooks are exploration-only, not production code
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "D", "S"]
