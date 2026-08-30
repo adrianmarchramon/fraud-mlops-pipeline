@@ -70,11 +70,13 @@ CURRENT_DATA_PATH = Path(os.getenv("CURRENT_DATA_PATH", str(PREDICTIONS_LOG)))
 DRIFT_THRESHOLD = float(os.getenv("DRIFT_THRESHOLD", "0.5"))
 
 # Below this many current rows, detect_drift() declines to answer instead of
-# guessing. Measured, not assumed: Evidently 0.7.21 run on a 3-row current
-# frame against a 500-row reference reports share=1.0 — every column drifted —
-# because a K-S test on three points is noise, not evidence. Without this floor
-# the first scheduled monitoring run would fire a retrain off the three
-# smoke-test records already in the log.
+# guessing. Measured, not assumed: Evidently 0.7.21 on a 3-row current frame
+# reports share=1.0 — every column drifted — even when those three rows are
+# drawn from the reference itself. Re-verified against both configurations:
+# the 500-row synthetic frame (K-S) and the real 5000-row reference
+# (Wasserstein). A two-sample test on three points measures noise whichever
+# test is selected. Without this floor the first scheduled monitoring run
+# would fire a retrain off the three smoke-test records already in the log.
 DRIFT_MIN_ROWS = int(os.getenv("DRIFT_MIN_ROWS", "100"))
 
 # Where the Evidently HTML report is written on every drift check. Under
