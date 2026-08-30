@@ -88,19 +88,26 @@ tag fails at the registry with a message that says so.
 
 ## Trade-offs / consequences
 
-- **The documented cold start has not been observed, and that may cost more than it saves.**
-  Render documents a **15-minute** idle spin-down and roughly a minute to wake. Measured once
-  against the live service, the first request after a **17-minute** window with no traffic from
-  this machine returned in **0.449 s** — no wake-up at all, against 0.300 s warm. The most likely
-  explanation is that the `healthCheckPath` Render polls counts as inbound traffic and keeps the
-  instance alive.
-  One 17-minute window does not prove the service never sleeps, and the README says so rather than
-  claiming either way. But if it genuinely never sleeps, the consequence is the row below: an
-  always-on free service consumes **~730 of the 750** monthly instance hours, so the allowance is
-  effectively spent by this one service and a second free service would exceed it. That is worth
-  knowing before assuming the free tier scales to a second demo.
-- **750 free instance hours per month, per workspace** — see above; a service kept warm by its own
-  health check uses very nearly all of them.
+- **The cold start is real and roughly twice what Render documents.** Two measurements, and the
+  first one misled me:
+
+  | Idle before the request | First response |
+  |---|---|
+  | 17 minutes | **0.449 s** — no wake-up at all (warm: 0.300 s) |
+  | ~3.4 hours | **111 s** |
+
+  Render documents a 15-minute spin-down and "about a minute" to wake. The 17-minute test showed
+  nothing, and I generalised from it into both this record and the README — that the service
+  appeared never to sleep, and that an always-on instance would therefore consume ~730 of the 750
+  monthly hours. The longer window disproved all of it. The service does sleep, the wake is
+  **around two minutes** (the 111 s was measured on a request following an aborted 30 s attempt,
+  so the true figure is between the two), and the hour budget is not at risk.
+  The lesson is the one this project keeps relearning: a single negative observation is not
+  evidence of absence, and a short window is not a long one. The README now leads the demo section
+  with the wait, because a reviewer who hits an unexplained two-minute hang concludes the link is
+  dead — the single worst outcome for the project's most visible artifact.
+- **750 free instance hours per month, per workspace.** Not a concern given the spin-down above:
+  a service that sleeps when idle uses a fraction of them.
 - **Every redeploy needs the pin updated.** Changing the deployed build means editing
   `image.url` to a new `sha-` tag and committing — deliberate friction, and the price of knowing
   what is live.

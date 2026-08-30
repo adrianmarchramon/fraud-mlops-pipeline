@@ -16,7 +16,8 @@ deliberately the least interesting part; the engineering around it is the delive
 
 **→ Try it live: [fraud-detection-api-unsm.onrender.com/docs](https://fraud-detection-api-unsm.onrender.com/docs)**
 
-<!-- Demo video goes here once recorded (Phase 9, Step 4): a 2-3 min clip of the drift loop. -->
+**→ [▶ Watch the 20-second introduction](docs/videos/project_resume.mp4)** — what the system is,
+at a glance. The loop it describes is walked through in full [further down](#the-closed-loop-drift--retrain).
 
 ---
 
@@ -60,14 +61,15 @@ Or open **[/docs](https://fraud-detection-api-unsm.onrender.com/docs)** and send
 browser — the Swagger UI is generated from the Pydantic schemas, so it cannot drift from what the
 API actually accepts.
 
-> **Two honest notes.** It runs on a free tier, which Render documents as sleeping after 15
-> minutes without traffic and taking about a minute to wake. In practice it has not been observed
-> sleeping — measured once, the first request after a 17-minute idle window still returned in
-> **0.45 s**, most likely because the configured health check counts as traffic. Treat a slow
-> first response as possible rather than expected. And **the public URL is the serving half of the
-> system, not the whole of it** — the drift-detection and retraining loop needs MLflow, Prefect and
-> the dataset, so it runs locally and is shown in the demo video. The deployed API does not
-> retrain itself; the system does, where it can.
+> **⏳ The first request may take up to two minutes. This is normal — the link is not broken.**
+> The service runs on a free tier that sleeps after a period without traffic. Measured: after
+> several hours idle, the first request took **111 seconds** to wake the container; after that,
+> every request is around **0.3 s**. A short idle does not trigger it — after 17 minutes the
+> service was still warm. If your first `curl` seems to hang, leave it running.
+>
+> **The public URL is the serving half of the system, not the whole of it.** The drift-detection
+> and retraining loop needs MLflow, Prefect and the dataset, so it runs locally and is shown in
+> the demo video. The deployed API does not retrain itself; the system does, where it can.
 
 ---
 
@@ -304,6 +306,18 @@ make train            # train, logging the run to MLflow
 make register         # register the best run; promote it only if it beats production
 make serve            # FastAPI on http://localhost:8000
 ```
+
+**Want the API running immediately, with no dataset and no MLflow?** A copy of the production
+model ships in the repository, so a fresh clone can serve real predictions straight away:
+
+```bash
+MODEL_PATH=deploy/model uv run uvicorn src.api.main:app --port 8000
+```
+
+Verified from a clean clone: `/health` reports `ok`, `/model-info` reports version 1, and
+`/predict` returns the same probabilities the live service does. Without `MODEL_PATH` the API
+resolves the `@production` alias from a Model Registry instead — which is what `make serve`,
+Compose and every test do, and why a promotion changes what they serve with no rebuild.
 
 ### Getting the data
 
