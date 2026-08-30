@@ -34,7 +34,14 @@ mlflow.db
 logs/
 # Local training artifacts (confusion_matrix.png, pr_curve.png). The permanent
 # copy of each run's artifacts lives in MLflow's own store, not here.
-models/
+#
+# ANCHORED to the repository root, and that leading slash is load-bearing.
+# Unanchored, `models/` matches a directory of that name at ANY depth, and it
+# silently swallowed deploy/model/code/src/models/ — four real files of the
+# exported artifact, register.py among them, which is where the FraudModel
+# class the bundle unpickles is defined. The bundle would have been committed
+# incomplete, and nothing would have said so.
+/models/
 
 # Notebooks (checkpoints)
 .ipynb_checkpoints/

@@ -8,8 +8,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0  # pinned by `pre-commit autoupdate`
     hooks:
+      # deploy/model/ is an exported MLflow artifact, byte-for-byte as the
+      # Registry produced it. These two hooks REWRITE files, and were measured
+      # fixing 7 of them (requirements.txt, the input-example JSONs) — a silent
+      # edit to a model bundle whose whole value is being identical to the
+      # registered version. check-yaml and check-added-large-files only read,
+      # so they stay active over it.
       - id: trailing-whitespace
+        exclude: ^deploy/model/
       - id: end-of-file-fixer
+        exclude: ^deploy/model/
       - id: check-yaml
       - id: check-added-large-files
         args: [--maxkb=1024]  # EDA notebook is committed with plot outputs (~540 KB)
