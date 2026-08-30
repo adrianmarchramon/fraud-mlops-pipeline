@@ -69,6 +69,24 @@ Report([DataDriftPreset()], include_tests=True).run(current, reference).dict()
   metrics[1:] ValueDrift(column=f1, method=K-S p_value, threshold=0.05)  -> float p-value
 ```
 
+> **Correction (2026-08-30, while assembling the project white paper).** The probe transcript
+> above is accurate for the probe, and misleading if generalised — which this record then went on
+> to do. Evidently selects the per-column test by **reference sample size**: at or below 1000 rows
+> the `K-S p_value` at threshold 0.05, above 1000 rows the **normed Wasserstein distance** at
+> threshold 0.1. The probe used 4-column synthetic frames well under that bound, so it saw K-S.
+>
+> Production does not. The `reference` DVC stage builds **5000 rows**, so the real monitoring path
+> runs Wasserstein — confirmed in the report from the closed-loop demonstration, whose raw HTML
+> contains `"stattest_name": "Wasserstein distance (normed)"` **30 times** and the string `K-S`
+> **zero** times. The error surfaced only when the report was screenshotted for the white paper.
+>
+> **Two consequences worth naming.** The decision below stands unchanged: the aggregate is still
+> located by `config.type`, never by index, and that is exactly why this mistake cost nothing at
+> runtime — the extraction never depended on which test produced the number. But
+> `tests/test_monitoring.py` uses 500-row frames, so **the suite exercises the extraction and
+> policy layers under K-S while production runs Wasserstein**. That gap is real and is now recorded
+> in the docstring of `_drifted_share`.
+
 So the supplied skeleton was wrong three times over: `as_dict` does not exist, there is no
 `result` key, and there is no `share_of_drifted_columns` key. It would have raised `AttributeError`
 on the first call. The reference document's shape — `.dict()`, and a `value` dict carrying
@@ -81,7 +99,9 @@ against a 500-row reference:
 share = 1.0   (count 4.0 of 4)
 ```
 
-Evidently runs K-S regardless and reports every column drifted. `logs/predictions.jsonl` currently
+Evidently reports every column drifted regardless (whichever test it selects — see the
+correction above; re-verified 2026-08-30 against the real 5000-row reference, where three rows
+drawn from the reference itself still report `share = 1.0`). `logs/predictions.jsonl` currently
 holds exactly **3 records**, two of them all-zero smoke payloads. Without
 `config.DRIFT_MIN_ROWS`, the first scheduled monitoring run after this lands would have fired a
 retrain off that noise. The floor is 100 rows, overridable by environment variable.
