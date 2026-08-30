@@ -88,12 +88,19 @@ tag fails at the registry with a message that says so.
 
 ## Trade-offs / consequences
 
-- **Cold starts are real and slower than "a few seconds".** Render spins a free service down after
-  **15 minutes** without inbound traffic, and bringing it back **takes about a minute**. The
-  README must say so plainly rather than let a reviewer conclude the service is broken. This is
-  the single largest cost of the free plan and the main argument for the $7 tier later.
-- **750 free instance hours per month, per workspace.** One always-idle service will not exhaust
-  them; several will.
+- **The documented cold start has not been observed, and that may cost more than it saves.**
+  Render documents a **15-minute** idle spin-down and roughly a minute to wake. Measured once
+  against the live service, the first request after a **17-minute** window with no traffic from
+  this machine returned in **0.449 s** — no wake-up at all, against 0.300 s warm. The most likely
+  explanation is that the `healthCheckPath` Render polls counts as inbound traffic and keeps the
+  instance alive.
+  One 17-minute window does not prove the service never sleeps, and the README says so rather than
+  claiming either way. But if it genuinely never sleeps, the consequence is the row below: an
+  always-on free service consumes **~730 of the 750** monthly instance hours, so the allowance is
+  effectively spent by this one service and a second free service would exceed it. That is worth
+  knowing before assuming the free tier scales to a second demo.
+- **750 free instance hours per month, per workspace** — see above; a service kept warm by its own
+  health check uses very nearly all of them.
 - **Every redeploy needs the pin updated.** Changing the deployed build means editing
   `image.url` to a new `sha-` tag and committing — deliberate friction, and the price of knowing
   what is live.
@@ -103,6 +110,13 @@ tag fails at the registry with a message that says so.
   of this record; nothing here has been confirmed against a running service. That is Step 1b, and
   until it happens this file describes an intent, not an observation — the same distinction
   [0035](0035-phase-7-live-verification.md) drew between wiring and live verification.
+- **The deployed service logs predictions to a disk nobody reads.** `log_prediction()` still
+  appends every request to `logs/predictions.jsonl` inside the container, and Render's filesystem
+  is ephemeral, so that file dies with each spin-down and nothing ever analyses it. The drift loop
+  reads the log on the machine where MLflow, Prefect and the dataset live. This is the intended
+  split — the public URL is the API half of the system, not the loop — but the README must say so
+  plainly, because "detects drift and retrains itself" beside a public link invites exactly the
+  wrong inference. The deployed API does not retrain; the system does, where it can.
 - **The health check makes Registry-independence load-bearing.** Because `/model-info` gates
   Render's view of health, a deployment whose bundle failed to load will be reported unhealthy and
   restarted rather than left serving `503`s quietly. That is the intent, but it also means a
