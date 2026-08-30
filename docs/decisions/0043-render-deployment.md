@@ -93,15 +93,19 @@ tag fails at the registry with a message that says so.
 
   | Idle before the request | First response |
   |---|---|
-  | 17 minutes | **0.449 s** — no wake-up at all (warm: 0.300 s) |
+  | 17 minutes | **0.449 s** — still warm |
+  | ~29 minutes | **191 s** |
   | ~3.4 hours | **111 s** |
+
+  So the spin-down happens somewhere between 17 and 29 minutes, close enough to Render's
+  documented 15, and the wake takes **two to three minutes** — twice what Render documents, and
+  notably *not* proportional to how long the service slept.
 
   Render documents a 15-minute spin-down and "about a minute" to wake. The 17-minute test showed
   nothing, and I generalised from it into both this record and the README — that the service
   appeared never to sleep, and that an always-on instance would therefore consume ~730 of the 750
-  monthly hours. The longer window disproved all of it. The service does sleep, the wake is
-  **around two minutes** (the 111 s was measured on a request following an aborted 30 s attempt,
-  so the true figure is between the two), and the hour budget is not at risk.
+  monthly hours. The longer windows disproved all of it. The service does sleep, the wake takes
+  two to three minutes, and the hour budget is not at risk.
   The lesson is the one this project keeps relearning: a single negative observation is not
   evidence of absence, and a short window is not a long one. The README now leads the demo section
   with the wait, because a reviewer who hits an unexplained two-minute hang concludes the link is
