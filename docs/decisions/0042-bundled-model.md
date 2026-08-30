@@ -144,6 +144,13 @@ whose entire value is being identical to the registered version. Both rewriting 
 - **The bundle contains a snapshot copy of `src/`** that is deliberately excluded from ruff. A
   reader who opens `deploy/model/code/src/register.py` is reading the model, not the codebase, and
   editing it there does nothing.
+- **`/model-info` reports `alias: production` on a service that resolved no alias.** The field is
+  a constant in `src/api/main.py`, and the claim is not false — the bundled artifact did hold
+  `@production` when it was exported — but it states a live relationship the deployed service does
+  not have, and `registered_model_meta` records no alias to read one from. Left as it is: it
+  remains the most useful answer to "what am I talking to", and the alternative is a nullable field
+  that complicates the response contract for every caller in order to be pedantic on one
+  deployment. Recorded so the claim is not mistaken for a verified one.
 - **`/model-info` on the deployed service reports the bundled version, not the Registry's.** If
   `@production` moves and the export does not, the public API will honestly report the older
   version it is actually serving — which is the correct answer, and only confusing if someone
